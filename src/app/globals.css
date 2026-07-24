@@ -15,6 +15,24 @@
   --accent-emissive: #ff6b42;
   --accent-secondary: #5c7080;
   --muted: #e5d6c7;
+
+  --light-background: #f7ebdb;
+  --light-surface: #efe0cc;
+  --light-foreground: #141c2b;
+  --light-accent-primary: #c85a3d;
+  --light-accent-emissive: #ff6b42;
+  --light-accent-secondary: #5c7080;
+  --light-muted: #e5d6c7;
+}
+
+.forced-light {
+  --background: var(--light-background);
+  --surface: var(--light-surface);
+  --foreground: var(--light-foreground);
+  --accent-primary: var(--light-accent-primary);
+  --accent-emissive: var(--light-accent-emissive);
+  --accent-secondary: var(--light-accent-secondary);
+  --muted: var(--light-muted);
 }
 
 .dark {

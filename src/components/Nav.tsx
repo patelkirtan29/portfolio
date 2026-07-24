@@ -1,81 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-const rooms = [
-  { id: "lobby", label: "Lobby" },
-  { id: "practice", label: "Practice" },
-  { id: "gallery", label: "Gallery" },
-  { id: "signal", label: "Signal" },
-];
+import { ROOM_IDS, ROOM_LABELS, useCurrentRoom } from "@/lib/scroll";
+import { useTheme } from "@/lib/theme";
 
 /**
  * Persistent nav. Per the creative direction doc, the 3D Console owns primary
  * wayfinding on desktop, so this stays minimal there (fixed corner wordmark +
  * room links). On coarse-pointer (mobile/touch) devices the Console doesn't
  * mount at all, so this renders a room-index dot pager on the screen edge
- * instead, driven by IntersectionObserver against the room sections' ids.
+ * instead.
  *
- * The light/dark theme toggle lives here too (toggles `.dark` on <html>,
- * matching Batch 0's class-based dark-mode strategy) since there's no other
- * obvious home for it yet — see the report for a note on relocating this
- * during integration if the Console or Command Palette want to own it.
+ * Current-room detection and the room id/label list are both single-sourced
+ * from `@/lib/scroll` (`useCurrentRoom` / `ROOM_IDS` / `ROOM_LABELS`) rather
+ * than this component's own `IntersectionObserver` + local array, so this nav
+ * always agrees with the Console radar and any future room rename only needs
+ * one edit. The theme toggle is likewise single-sourced from `@/lib/theme`'s
+ * shared store, so this button and the ⌘K palette's "Toggle theme" action
+ * can never drift out of sync.
  */
 export default function Nav() {
-  const [activeId, setActiveId] = useState("lobby");
-  const [isDark, setIsDark] = useState(true);
-
-  // Sync theme state with the actual DOM class + any stored preference.
-  // Deliberate one-time exception to react-hooks/set-state-in-effect: the
-  // stored preference and DOM class are only knowable client-side (SSR
-  // always renders the layout.tsx default), so this reconciles React state
-  // with that external source exactly once on mount.
-  useEffect(() => {
-    const stored = window.localStorage.getItem("theme");
-    if (stored === "light") {
-      document.documentElement.classList.remove("dark");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsDark(false);
-    } else if (stored === "dark") {
-      document.documentElement.classList.add("dark");
-      setIsDark(true);
-    } else {
-      setIsDark(document.documentElement.classList.contains("dark"));
-    }
-  }, []);
-
-  // Room-index tracking, shared by both the desktop link list (active state)
-  // and the mobile dot pager. Self-contained IntersectionObserver — does not
-  // depend on the scroll-engine stream's @/lib/scroll module.
-  useEffect(() => {
-    const sections = rooms
-      .map((r) => document.getElementById(r.id))
-      .filter((el): el is HTMLElement => Boolean(el));
-
-    if (sections.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]) {
-          setActiveId(visible[0].target.id);
-        }
-      },
-      { threshold: [0.25, 0.5, 0.75], rootMargin: "-10% 0px -10% 0px" }
-    );
-
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, []);
-
-  function toggleTheme() {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    window.localStorage.setItem("theme", next ? "dark" : "light");
-  }
+  const activeId = useCurrentRoom() ?? "lobby";
+  const { isDark, toggleTheme } = useTheme();
 
   return (
     <>
@@ -89,18 +34,18 @@ export default function Nav() {
           kirtan.dev
         </a>
         <div className="flex items-center gap-6">
-          {rooms.map((room) => (
+          {ROOM_IDS.map((id) => (
             <a
-              key={room.id}
-              href={`#${room.id}`}
-              aria-current={activeId === room.id ? "true" : undefined}
+              key={id}
+              href={`#${id}`}
+              aria-current={activeId === id ? "true" : undefined}
               className={
-                activeId === room.id
+                activeId === id
                   ? "text-accent-primary"
                   : "text-accent-secondary hover:text-foreground"
               }
             >
-              {room.label}
+              {ROOM_LABELS[id]}
             </a>
           ))}
           <button
@@ -120,17 +65,17 @@ export default function Nav() {
         aria-label="Room index"
         className="fixed top-1/2 right-4 z-50 hidden -translate-y-1/2 flex-col items-center gap-3 [@media(pointer:coarse)]:flex"
       >
-        {rooms.map((room) => (
+        {ROOM_IDS.map((id) => (
           <a
-            key={room.id}
-            href={`#${room.id}`}
-            aria-label={`Go to ${room.label}`}
-            aria-current={activeId === room.id ? "true" : undefined}
+            key={id}
+            href={`#${id}`}
+            aria-label={`Go to ${ROOM_LABELS[id]}`}
+            aria-current={activeId === id ? "true" : undefined}
             className="group flex items-center justify-center p-1.5"
           >
             <span
               className={`block rounded-full transition-all ${
-                activeId === room.id
+                activeId === id
                   ? "h-2.5 w-2.5 bg-accent-primary"
                   : "h-1.5 w-1.5 bg-accent-secondary/60 group-hover:bg-accent-secondary"
               }`}

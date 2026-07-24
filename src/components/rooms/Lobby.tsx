@@ -14,6 +14,7 @@
 
 import { Suspense, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
+import SplitText from "@/components/SplitText";
 
 const Console = dynamic(() => import("@/components/Console"), {
   ssr: false,
@@ -83,6 +84,23 @@ export default function Lobby() {
       <span className="sr-only">
         Lobby — the site&apos;s hero room. Use the room navigation to jump to About, Projects, or Contact.
       </span>
+
+      {/* INTEGRATION NOTE: no stream owned hero copy for this room — the
+          creative direction treats the orbital Console itself as the hero,
+          with no headline text specified. Added a minimal kicker + H1 here
+          purely so SplitText (Stream 5) has real heading content to wrap,
+          per Batch 2's cross-stream wiring step. Placeholder copy — swap
+          for real name/tagline before ship. Kept small and top-anchored,
+          `pointer-events-none`, so it never competes with the Console's
+          orbiting node hit-targets for space or clicks. */}
+      <div className="pointer-events-none absolute inset-x-0 top-16 z-10 flex flex-col items-center gap-2 px-6 text-center sm:top-20">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent-secondary">
+          kirtan.dev
+        </p>
+        <h1 className="font-display text-2xl tracking-tight text-foreground sm:text-3xl">
+          <SplitText>Full-stack developer, mission-console builder.</SplitText>
+        </h1>
+      </div>
 
       {isCoarsePointer ? (
         <StaticRoomNav />

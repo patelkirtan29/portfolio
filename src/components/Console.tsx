@@ -34,6 +34,7 @@
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCurrentRoom, useScrollProgress } from "@/lib/scroll";
 import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -95,42 +96,13 @@ function usePrefersReducedMotion(): boolean {
   return useSyncExternalStore(subscribeReducedMotion, getReducedMotionSnapshot, getReducedMotionServerSnapshot);
 }
 
-/** See the integration note in the file header — this stands in for
- *  Stream 2's forthcoming `useLenis()`. Returns a [0, 1] shrink progress
- *  derived from how far the visitor has scrolled through the Lobby section. */
+/** INTEGRATION: was a local, dependency-free rAF/`getBoundingClientRect`
+ *  stand-in (see file header note) for Stream 2's `useLenis()`-backed scroll
+ *  source. Now that `@/lib/scroll` exists, this reads off the shared Lenis
+ *  singleton's `useScrollProgress()` so the Console shrink and the
+ *  room-snap/reveal system read from one clock instead of two. */
 function useConsoleShrinkProgress(): number {
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    const lobbyEl = document.getElementById("lobby");
-    if (!lobbyEl) return;
-
-    let rafId = 0;
-    const compute = () => {
-      const rect = lobbyEl.getBoundingClientRect();
-      const start = rect.height * 0.4;
-      const end = Math.max(rect.height, start + 1);
-      const scrolled = Math.min(Math.max(-rect.top, 0), end);
-      const raw = (scrolled - start) / Math.max(end - start, 1);
-      setProgress(Math.min(Math.max(raw, 0), 1));
-    };
-
-    const onScrollOrResize = () => {
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(compute);
-    };
-
-    compute();
-    window.addEventListener("scroll", onScrollOrResize, { passive: true });
-    window.addEventListener("resize", onScrollOrResize);
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", onScrollOrResize);
-      window.removeEventListener("resize", onScrollOrResize);
-    };
-  }, []);
-
-  return progress;
+  return useScrollProgress();
 }
 
 /** Full-bleed-hero -> fixed-corner-radar CSS transform for a given progress. */
@@ -221,6 +193,12 @@ export default function Console() {
   useEffect(() => {
     hoveredIdRef.current = hoveredId;
   }, [hoveredId]);
+
+  const currentRoom = useCurrentRoom();
+  const currentRoomRef = useRef<RoomId | null>(currentRoom);
+  useEffect(() => {
+    currentRoomRef.current = currentRoom;
+  }, [currentRoom]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -352,6 +330,7 @@ export default function Console() {
       const elapsed = clock.getElapsedTime();
       const isReduced = reducedMotionRef.current;
       const activeId = hoveredIdRef.current;
+      const currentRoom = currentRoomRef.current;
 
       // Trigger the one-time flourish once every node has been visited.
       if (visited.size >= CONSOLE_NODES.length && !flourishTriggered) {
@@ -387,7 +366,7 @@ export default function Console() {
           mesh.rotation.y += 0.009;
         }
 
-        const isActive = config.id === activeId || flourishEase > 0.6;
+        const isActive = config.id === activeId || config.id === currentRoom || flourishEase > 0.6;
         mesh.layers.set(0);
         if (isActive) {
           mesh.layers.enable(BLOOM_LAYER);
@@ -424,7 +403,7 @@ export default function Console() {
         readoutRef.current.style.opacity = "0";
       }
 
-      if (activeId || flourishEase > 0) {
+      if (activeId || currentRoom || flourishEase > 0) {
         scene.traverse(darkenNonBloomed);
         bloomComposer.render();
         scene.traverse(restoreMaterial);

@@ -3,17 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Command } from "cmdk";
+import { ROOM_IDS, ROOM_LABELS } from "@/lib/scroll";
+import { toggleTheme as sharedToggleTheme } from "@/lib/theme";
 
 // Shared easing curve — same cubic-bezier as Cursor.tsx / SplitText.tsx /
 // DigitFlip.tsx (see Cursor.tsx's EASE constant for the fuller note).
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
-
-const ROOMS = [
-  { id: "lobby", label: "Lobby" },
-  { id: "practice", label: "Practice" },
-  { id: "gallery", label: "Gallery" },
-  { id: "signal", label: "Signal" },
-];
 
 // Placeholder — integration should swap in the real contact address before ship.
 const PLACEHOLDER_EMAIL = "hello@example.com";
@@ -51,15 +46,10 @@ export default function CommandPalette() {
   );
 
   const toggleTheme = useCallback(() => {
-    // NOTE (integration): Stream 4 also built a theme-toggle button in
-    // Nav.tsx. Both this and that button end up flipping the same
-    // `document.documentElement.classList.contains("dark")` bit, but if
-    // either side mirrors it into its own React state, the two can drift
-    // out of sync (toggle via one, then the other's stale state "toggles"
-    // it back). Integration should make sure there's a single source of
-    // truth (e.g. a small shared store/hook) that both read and write,
-    // rather than two independent toggles racing on the same DOM class.
-    document.documentElement.classList.toggle("dark");
+    // Routed through the shared `@/lib/theme` store (also used by Nav.tsx's
+    // toggle button) so both surfaces read/write the same state instead of
+    // racing on the DOM class independently — see src/lib/theme.ts.
+    sharedToggleTheme();
     close();
   }, [close]);
 
@@ -110,13 +100,13 @@ export default function CommandPalette() {
                 <Command.Empty className="px-3 py-6 text-center text-sm text-accent-secondary">No results.</Command.Empty>
 
                 <Command.Group heading="Jump to" className="px-1 py-1 text-xs uppercase tracking-wide text-accent-secondary">
-                  {ROOMS.map((room) => (
-                    <Command.Item key={room.id} value={`Jump to ${room.label}`} onSelect={() => jumpTo(room.id)} className={itemClass}>
+                  {ROOM_IDS.map((id) => (
+                    <Command.Item key={id} value={`Jump to ${ROOM_LABELS[id]}`} onSelect={() => jumpTo(id)} className={itemClass}>
                       {/* Real anchor per spec (plain anchor navigation) — click
                           is funneled through onSelect above so keyboard (Enter)
                           selection navigates too, not just pointer clicks. */}
-                      <a href={`#${room.id}`} onClick={(e) => e.preventDefault()} tabIndex={-1}>
-                        Jump to {room.label}
+                      <a href={`#${id}`} onClick={(e) => e.preventDefault()} tabIndex={-1}>
+                        Jump to {ROOM_LABELS[id]}
                       </a>
                     </Command.Item>
                   ))}

@@ -41,6 +41,9 @@ export interface CursorState {
   variant: CursorVariant;
   /** Shown inside the morphed circle. Only meaningful for `variant: "hover"`. */
   label?: string;
+  /** Raw viewport pointer position. Updated on every `mousemove` — see
+   *  `setCursorCoords` below for why this has its own setter. */
+  coords?: { x: number; y: number };
 }
 
 const DEFAULT_STATE: CursorState = { variant: "default" };
@@ -52,9 +55,22 @@ function emit() {
   listeners.forEach((listener) => listener(cursorState));
 }
 
-/** Imperative setter — usable from anywhere, no hook required. */
+/** Imperative setter — usable from anywhere, no hook required. Merges onto
+ *  the existing state (rather than replacing it wholesale) so a hover/focus
+ *  update never clobbers the last-known `coords`. */
 export function setCursor(next: CursorState) {
-  cursorState = next;
+  cursorState = { ...cursorState, ...next };
+  emit();
+}
+
+/** Separate setter for high-frequency pointer coordinates. Patches only the
+ *  `coords` key — kept distinct from `setCursor` (which represents discrete
+ *  hover/focus variant changes) so raw mousemove traffic stays cheap and
+ *  obviously separate from variant/label transitions, even though it still
+ *  notifies the same `useCursor()` subscribers (the Gallery's coordinate HUD
+ *  reads coords via that same hook). */
+export function setCursorCoords(x: number, y: number) {
+  cursorState = { ...cursorState, coords: { x, y } };
   emit();
 }
 
@@ -126,6 +142,7 @@ export default function Cursor() {
     const move = (e: MouseEvent) => {
       x.set(e.clientX);
       y.set(e.clientY);
+      setCursorCoords(e.clientX, e.clientY);
       setVisible(true);
     };
     const hide = () => setVisible(false);

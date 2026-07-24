@@ -10,6 +10,7 @@
  *
  * Stable exports other streams should code against:
  *   - ROOM_IDS / RoomId        canonical room id list, in page order
+ *   - ROOM_LABELS              canonical human-readable label per room id
  *   - initLenis() / destroyLenis()   lifecycle (owned by ScrollProvider)
  *   - getLenis()               imperative access outside React (e.g. rAF loops)
  *   - scrollToRoom(id, opts?)  smooth-scroll (or native-scroll fallback) to a room
@@ -26,6 +27,15 @@ import Lenis, { type ScrollToOptions } from "lenis";
 /** Canonical room ids, in page order. Must match each room section's `id` attribute. */
 export const ROOM_IDS = ["lobby", "practice", "gallery", "signal"] as const;
 export type RoomId = (typeof ROOM_IDS)[number];
+
+/** Canonical human-readable label per room — single-sourced alongside `ROOM_IDS`
+ *  so nav/palette/etc. never drift out of sync when a room is renamed. */
+export const ROOM_LABELS: Record<RoomId, string> = {
+  lobby: "Lobby",
+  practice: "Practice",
+  gallery: "Gallery",
+  signal: "Signal",
+};
 
 interface ScrollState {
   lenis: Lenis | null;

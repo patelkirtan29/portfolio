@@ -9,10 +9,10 @@
  * Per the creative direction's one deliberate high-contrast moment
  * ("Lobby → Practice locally swaps the room's tokens to the light-mode
  * pair regardless of the visitor's global theme toggle"), this section
- * pins the light-mode token values via inline CSS custom properties. That
+ * applies the shared `.forced-light` utility class (globals.css), which
  * overrides the ancestor `.dark` class's cascade for exactly this subtree
- * (inline style wins on specificity) without touching `globals.css` or the
- * global theme toggle — every other room stays on the visitor's chosen mode.
+ * via `--light-*` custom properties — without touching the global theme
+ * toggle — every other room stays on the visitor's chosen mode.
  *
  * Headings get a fade+rise reveal on scroll-into-view via GSAP ScrollTrigger
  * (registered here since this room owns its own reveal instances; the shared
@@ -24,23 +24,11 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { prefersReducedMotion } from "@/lib/scroll";
+import SplitText from "@/components/SplitText";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
-
-// Mirrors the light-mode column of the token table in FINAL_CREATIVE_DIRECTION.md.
-// Duplicated intentionally (see BUILD_IDEAS_LOG for a follow-up to centralize
-// this as a reusable class in globals.css, which is out of this stream's scope).
-const PRACTICE_LIGHT_TOKENS = {
-  "--background": "#f7ebdb",
-  "--surface": "#efe0cc",
-  "--foreground": "#141c2b",
-  "--accent-primary": "#c85a3d",
-  "--accent-emissive": "#ff6b42",
-  "--accent-secondary": "#5c7080",
-  "--muted": "#e5d6c7",
-} as React.CSSProperties;
 
 const SECTIONS = [
   {
@@ -107,16 +95,17 @@ export default function Practice() {
     <section
       id="practice"
       ref={sectionRef}
-      style={PRACTICE_LIGHT_TOKENS}
       aria-label="Room: Practice — about"
-      className="min-h-screen w-full bg-background px-6 py-24 text-foreground transition-colors md:px-16 lg:px-24"
+      className="forced-light min-h-screen w-full bg-background px-6 py-24 text-foreground transition-colors md:px-16 lg:px-24"
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-16">
         <header data-reveal className="opacity-0">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent-secondary">
             Room 02 — Practice
           </p>
-          <h2 className="mt-4 font-display text-4xl md:text-5xl">About</h2>
+          <h2 className="mt-4 font-display text-4xl md:text-5xl">
+            <SplitText>About</SplitText>
+          </h2>
         </header>
 
         {SECTIONS.map((section) => (

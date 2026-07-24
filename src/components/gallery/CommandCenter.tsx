@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import DigitFlip from "@/components/DigitFlip";
 import type { GitHubRepoSummary } from "@/lib/github";
 import {
   MAGNITUDE_HIGHLIGHT,
@@ -82,7 +83,7 @@ export default function CommandCenter({
       {/* Commit velocity */}
       <StatTile label="Commit velocity">
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-3xl tabular-nums">{commitVelocity}</span>
+          <DigitFlip value={commitVelocity} className="text-3xl" />
           <span className="font-mono text-xs text-[var(--accent-secondary)]">
             pushes / {RECENT_WINDOW_DAYS}d
           </span>
@@ -130,7 +131,7 @@ export default function CommandCenter({
                 className="h-2 w-2 rounded-full"
                 style={{ backgroundColor: colorForLanguage(language) }}
               />
-              {language} {pct}%
+              {language} <DigitFlip value={pct} suffix="%" className="text-[11px]" />
             </li>
           ))}
         </ul>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import CommandCenter from "./CommandCenter";
 import StackMap from "./StackMap";
 import ProjectGrid from "./ProjectGrid";
+import CoordinateHUD from "./CoordinateHUD";
 import { useGitHubRepos } from "./useGitHubRepos";
 
 /**
@@ -43,6 +44,8 @@ export default function GalleryClient() {
         activeLanguage={activeLanguage}
         onClearFilter={() => setActiveLanguage(null)}
       />
+
+      <CoordinateHUD />
     </div>
   );
 }
