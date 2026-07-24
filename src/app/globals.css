@@ -1,26 +1,48 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: toggled via a `.dark` class on <html>, controlled
+   later by the ⌘K palette / theme toggle. We default to dark (`<html class="dark">`
+   in layout.tsx) since the "Mission Console" navy identity is the primary mode;
+   `.light` is not a class we use — the absence of `.dark` is the light fallback
+   defined on :root, so removing the class alone is enough to go light. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7ebdb;
+  --surface: #efe0cc;
+  --foreground: #141c2b;
+  --accent-primary: #c85a3d;
+  --accent-emissive: #ff6b42;
+  --accent-secondary: #5c7080;
+  --muted: #e5d6c7;
+}
+
+.dark {
+  --background: #0d1420;
+  --surface: #141c2b;
+  --foreground: #f2efe9;
+  --accent-primary: #df6c4f;
+  --accent-emissive: #ff6b42;
+  --accent-secondary: #8fa3b0;
+  --muted: #26314a;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-emissive: var(--accent-emissive);
+  --color-accent-secondary: var(--accent-secondary);
+  --color-muted: var(--muted);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-space-grotesk);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-feature-settings: "ss01" 1, "cv11" 1;
 }
