@@ -1,4 +1,4 @@
-import type { GitHubRepo } from '@/app/api/github-repos/route';
+import { getGitHubRepos } from '@/lib/github';
 
 const LANGUAGE_STYLES: Record<string, string> = {
   Python: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
@@ -10,25 +10,8 @@ const LANGUAGE_STYLES: Record<string, string> = {
 
 const DEFAULT_LANG_STYLE = 'bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300';
 
-async function fetchRepos(): Promise<GitHubRepo[]> {
-  try {
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL ??
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-
-    const res = await fetch(`${baseUrl}/api/github-repos`, {
-      next: { revalidate: 3600 },
-    });
-
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
-  }
-}
-
 export default async function FeaturedProjects() {
-  const repos = (await fetchRepos()).slice(0, 3);
+  const repos = (await getGitHubRepos().catch(() => [])).slice(0, 3);
 
   if (repos.length === 0) {
     return (
