@@ -31,7 +31,7 @@ export async function GET() {
 
     const data = await res.json();
 
-    const repos: GitHubRepo[] = (data as GitHubRepo & { fork: boolean }[])
+    const repos: GitHubRepo[] = (data as (GitHubRepo & { fork: boolean })[])
       .filter((repo) => !repo.fork)
       .map(({ name, description, language, html_url, stargazers_count, updated_at }) => ({
         name,
