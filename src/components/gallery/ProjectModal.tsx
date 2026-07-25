@@ -34,10 +34,13 @@ interface ProjectModalProps {
  * Escape-to-close, and restore-focus-on-close behavior below are hand
  * rolled (small enough to not warrant a new dependency).
  *
- * z-index: `z-[9990]` — above room content, the Gallery `CoordinateHUD`,
- * and the Console's shrunk radar widget, but intentionally *below*
- * `CommandPalette`'s `z-[9998]` so ⌘K always overlays correctly even while
- * a project modal is open (see CommandPalette.tsx's docblock).
+ * z-index: `z-[9990]` — above room content and the Gallery `CoordinateHUD`,
+ * but intentionally *below* `CommandPalette`'s `z-[9998]` so ⌘K always
+ * overlays correctly even while a project modal is open (see
+ * CommandPalette.tsx's docblock). The Console is never a stacking concern
+ * here — it only ever mounts inside the Lobby room, and this modal only
+ * ever opens from the Gallery room, so the two can never be on screen at
+ * the same time.
  */
 export default function ProjectModal({ repo, onClose }: ProjectModalProps) {
   const now = useNow(30_000);

@@ -14,14 +14,16 @@ import { useCurrentRoom } from "@/lib/scroll";
  * wired into its existing `mousemove` listener) rather than standing up a
  * second listener — see BUILD_IDEAS_DECISIONS.md item 3.
  *
- * z-index: `z-[60]` — comfortably above room content/the Console's shrunk
- * radar widget (`z-40`) and `Nav` (`z-50`, preserving this HUD's prior
- * stacking relative to both), but well *below* `ProjectModal`'s `z-[9990]`
- * and `CommandPalette`'s `z-[9998]`. This used to sit at `z-[9998]` — the
- * same layer as the command palette — which meant this fixed bottom-right
- * readout would render on top of (and visually clash with) an open project
- * modal's backdrop instead of being cleanly covered by it. Lowering it here
- * lets the modal (and the palette) properly overlay this HUD instead.
+ * z-index: `z-[60]` — comfortably above room content and `Nav` (`z-50`,
+ * preserving this HUD's prior stacking relative to it — the Console is no
+ * longer a stacking concern here since it only ever mounts inside the Lobby
+ * room and is gone by the time Gallery is in view), but well *below*
+ * `ProjectModal`'s `z-[9990]` and `CommandPalette`'s `z-[9998]`. This used to
+ * sit at `z-[9998]` — the same layer as the command palette — which meant
+ * this fixed bottom-right readout would render on top of (and visually
+ * clash with) an open project modal's backdrop instead of being cleanly
+ * covered by it. Lowering it here lets the modal (and the palette) properly
+ * overlay this HUD instead.
  */
 export default function CoordinateHUD() {
   const { cursor } = useCursor();
