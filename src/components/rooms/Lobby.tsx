@@ -15,23 +15,22 @@
 import { Suspense, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import SplitText from "@/components/SplitText";
+import { ROOM_IDS, ROOM_LABELS } from "@/lib/scroll";
 
 const Console = dynamic(() => import("@/components/Console"), {
   ssr: false,
 });
 
-// Intentionally duplicated (not imported) from Console.tsx's `CONSOLE_NODES`:
-// this is just the id/label/href a plain <a> nav needs, with zero Three.js
-// dependency. Importing it from Console.tsx would statically pull that
-// module's `three` import graph into this file's chunk and defeat the
-// dynamic import above. Keep in sync with `CONSOLE_NODES` in Console.tsx if
-// room ids/labels ever change.
-const ROOM_LINKS = [
-  { id: "lobby", label: "Home", href: "#lobby" },
-  { id: "practice", label: "About", href: "#practice" },
-  { id: "gallery", label: "Projects", href: "#gallery" },
-  { id: "signal", label: "Contact", href: "#signal" },
-] as const;
+// Single-sourced from `@/lib/scroll` (the same module `Nav.tsx` and
+// `Console.tsx` read from) rather than a locally duplicated array, so this
+// static fallback nav can never drift back to stale labels. This import has
+// zero Three.js dependency of its own, so it doesn't defeat the dynamic
+// import of `Console` above.
+const ROOM_LINKS = ROOM_IDS.map((id) => ({
+  id,
+  label: ROOM_LABELS[id],
+  href: `#${id}`,
+}));
 
 function StaticRoomNav() {
   return (

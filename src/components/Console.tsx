@@ -5,10 +5,30 @@
  *
  * Four low-poly nodes (icosahedron / torus / octahedron / box) orbit a
  * central point light in plain Three.js. Each node maps to one room
- * (Home/Lobby, About/Practice, Projects/Gallery, Contact/Signal). The visual
- * accessible surface is a layer of real DOM <button>s kept in sync with the
- * projected screen position of each mesh every animation frame — the
- * <canvas> itself is purely decorative (`aria-hidden`).
+ * (Lobby/Practice/Gallery/Signal). The visible accessible surface is a layer
+ * of real DOM <button>s kept in sync with the projected screen position of
+ * each mesh every animation frame — the <canvas> itself is purely decorative
+ * (`aria-hidden`).
+ *
+ * LOBBY-ONLY LIFECYCLE: the Console only exists while the Lobby room is
+ * active. There is no shrunk/persistent corner-widget state anymore — that
+ * mechanic (`useConsoleShrinkProgress` / `getShrinkTransform`, driven by
+ * whole-page scroll progress) was the root cause of the Console staying
+ * large and opaque over page content in every other room, so it's been
+ * removed outright rather than repaired. The outer `Console` component below
+ * gates on `useCurrentRoom() === "lobby"` (from `@/lib/scroll`): on exit
+ * (scroll-past Lobby, or a node-click jump elsewhere) it keeps the scene
+ * mounted just long enough to play a short opacity fade
+ * (`FADE_DURATION_MS`), then stops rendering `ConsoleScene` for good, which
+ * unmounts it for real — canceling the rAF loop and disposing the
+ * renderer/geometries/materials/composers, so nothing keeps costing GPU/
+ * battery once you've scrolled away. Every other room's wayfinding is
+ * handled independently by `Nav.tsx` (already correct, not touched here).
+ *
+ * The canvas + node buttons are scoped *inside* `<section id="lobby">`
+ * (`absolute inset-0` against that section, sized via a `ResizeObserver` on
+ * the wrapper) rather than pinned to the viewport — it no longer needs to
+ * escape into other rooms' space.
  *
  * This module is meant to be loaded via `next/dynamic(() => import(...), {
  * ssr: false })` from `rooms/Lobby.tsx`, wrapped in `<Suspense>`, and only on
@@ -17,32 +37,16 @@
  * safe to statically import `three` here: doing so does not block initial
  * content paint, since the chunk containing this file (and three) is never
  * requested until Lobby decides a 3D-capable device is looking at it.
- *
- * ASSUMPTION / INTEGRATION NOTE — scroll source:
- * The creative direction calls for Lenis to be the single canonical scroll
- * source, and for a `useLenis()` hook to live at `@/lib/scroll` (owned by
- * Stream 2 / Scroll Engine, built concurrently in a sibling worktree — that
- * file does not exist here yet). Rather than import a module that doesn't
- * exist in this worktree (which would break `npm run build`), this file
- * implements a local, dependency-free stand-in — `useConsoleShrinkProgress`
- * below — that watches native `scroll`/`resize` events against the Lobby
- * section's bounding rect to produce the same [0, 1] shrink signal a real
- * `useLenis()`-backed hook would. When Stream 2's hook lands during
- * integration, swap the body of `useConsoleShrinkProgress` for a read off
- * the shared Lenis instance so the Console shrink and the room-snap/reveal
- * system read from one clock instead of two.
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useCurrentRoom, useScrollProgress } from "@/lib/scroll";
+import { ROOM_IDS, ROOM_LABELS, scrollToRoom, useCurrentRoom, type RoomId } from "@/lib/scroll";
 import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
-
-type RoomId = "lobby" | "practice" | "gallery" | "signal";
 
 interface ConsoleNodeConfig {
   id: RoomId;
@@ -54,22 +58,35 @@ interface ConsoleNodeConfig {
   phase: number;
 }
 
-/** Home/About/Projects/Contact -> Lobby/Practice/Gallery/Signal, in the
- *  icosahedron/torus/octahedron/box order called out in the creative brief. */
-const CONSOLE_NODES: ConsoleNodeConfig[] = [
-  { id: "lobby", label: "Home", href: "#lobby", geometry: "icosahedron", orbitRadius: 2.6, orbitSpeed: 0.22, phase: 0 },
-  { id: "practice", label: "About", href: "#practice", geometry: "torus", orbitRadius: 2.6, orbitSpeed: 0.22, phase: Math.PI / 2 },
-  { id: "gallery", label: "Projects", href: "#gallery", geometry: "octahedron", orbitRadius: 2.6, orbitSpeed: 0.22, phase: Math.PI },
-  { id: "signal", label: "Contact", href: "#signal", geometry: "box", orbitRadius: 2.6, orbitSpeed: 0.22, phase: (3 * Math.PI) / 2 },
-];
+/** icosahedron/torus/octahedron/box, in `ROOM_IDS` order, per the creative
+ *  brief. Ids/labels are single-sourced from `@/lib/scroll` (the same source
+ *  `Nav.tsx` reads) so this can never drift back to the stale
+ *  Home/About/Projects/Contact labels. */
+const NODE_GEOMETRY_BY_ROOM: Record<RoomId, ConsoleNodeConfig["geometry"]> = {
+  lobby: "icosahedron",
+  practice: "torus",
+  gallery: "octahedron",
+  signal: "box",
+};
+
+const CONSOLE_NODES: ConsoleNodeConfig[] = ROOM_IDS.map((id, index) => ({
+  id,
+  label: ROOM_LABELS[id],
+  href: `#${id}`,
+  geometry: NODE_GEOMETRY_BY_ROOM[id],
+  orbitRadius: 2.6,
+  orbitSpeed: 0.22,
+  phase: (index * Math.PI) / 2,
+}));
 
 const SCENE_BACKGROUND = 0x0d1420;
 const NODE_BASE_COLOR = 0x5c7080;
 const ACCENT_EMISSIVE = 0xff6b42;
 const BLOOM_LAYER = 1;
 const FLOURISH_DURATION_MS = 1600;
-const RADAR_SIZE_PX = 132;
-const RADAR_MARGIN_PX = 24;
+/** Room-exit opacity transition, then full unmount. Kept inside the
+ *  150-250ms window called out in the approved fix. */
+const FADE_DURATION_MS = 200;
 
 // ---------------------------------------------------------------------------
 // Hooks
@@ -94,28 +111,6 @@ function getReducedMotionServerSnapshot(): boolean {
  *  client-side. */
 function usePrefersReducedMotion(): boolean {
   return useSyncExternalStore(subscribeReducedMotion, getReducedMotionSnapshot, getReducedMotionServerSnapshot);
-}
-
-/** INTEGRATION: was a local, dependency-free rAF/`getBoundingClientRect`
- *  stand-in (see file header note) for Stream 2's `useLenis()`-backed scroll
- *  source. Now that `@/lib/scroll` exists, this reads off the shared Lenis
- *  singleton's `useScrollProgress()` so the Console shrink and the
- *  room-snap/reveal system read from one clock instead of two. */
-function useConsoleShrinkProgress(): number {
-  return useScrollProgress();
-}
-
-/** Full-bleed-hero -> fixed-corner-radar CSS transform for a given progress. */
-function getShrinkTransform(progress: number): string {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const minDim = Math.min(vw, vh);
-  const scale = 1 - progress * (1 - RADAR_SIZE_PX / minDim);
-  const targetX = vw / 2 - RADAR_MARGIN_PX - RADAR_SIZE_PX / 2;
-  const targetY = vh / 2 - RADAR_MARGIN_PX - RADAR_SIZE_PX / 2;
-  const translateX = progress * targetX;
-  const translateY = progress * targetY;
-  return `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`;
 }
 
 /** One soft, one-time oscillator chime. No audio library needed for a
@@ -172,11 +167,52 @@ interface LiveNode {
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Outer component — Lobby-scoped mount / fade / unmount gate
 // ---------------------------------------------------------------------------
 
+/**
+ * Renders `ConsoleScene` only while the Lobby room is active. On exit, keeps
+ * `ConsoleScene` mounted for `FADE_DURATION_MS` — its wrapper transitions
+ * opacity to 0 during that window — and only then stops rendering it, so
+ * `ConsoleScene`'s own effect cleanup (rAF cancel + full Three.js dispose)
+ * runs at the end of the fade instead of cutting it off mid-transition.
+ * Re-entering Lobby (scrolling back up) cancels any pending unmount and
+ * remounts immediately.
+ */
 export default function Console() {
-  const shrinkProgress = useConsoleShrinkProgress();
+  const currentRoom = useCurrentRoom();
+  const isLobby = currentRoom === "lobby";
+  const [sceneMounted, setSceneMounted] = useState(isLobby);
+
+  // Entering (or re-entering) the Lobby mounts immediately. This is a
+  // render-phase state adjustment (not an effect) per React's documented
+  // "adjusting state when a prop changes" pattern: it only ever fires when
+  // `sceneMounted` still disagrees with `isLobby`, so it settles after one
+  // extra render and never loops.
+  if (isLobby && !sceneMounted) {
+    setSceneMounted(true);
+  }
+
+  // Leaving the Lobby: let the opacity transition play out for
+  // FADE_DURATION_MS, then unmount ConsoleScene for real (cancels its rAF
+  // loop and disposes the Three.js renderer/geometries/materials/composers).
+  useEffect(() => {
+    if (isLobby || !sceneMounted) return;
+    const timeoutId = window.setTimeout(() => {
+      setSceneMounted(false);
+    }, FADE_DURATION_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [isLobby, sceneMounted]);
+
+  if (!sceneMounted) return null;
+  return <ConsoleScene isLobby={isLobby} />;
+}
+
+// ---------------------------------------------------------------------------
+// Inner component — the actual Three.js scene, DOM buttons, HUD readout
+// ---------------------------------------------------------------------------
+
+function ConsoleScene({ isLobby }: { isLobby: boolean }) {
   const reducedMotion = usePrefersReducedMotion();
   const reducedMotionRef = useRef(reducedMotion);
   useEffect(() => {
@@ -202,17 +238,26 @@ export default function Console() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const wrapper = wrapperRef.current;
+    if (!canvas || !wrapper) return;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(SCENE_BACKGROUND);
 
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+    // Sized off the Lobby-scoped wrapper, not the viewport — the container
+    // this now lives in is `absolute inset-0` against `<section id="lobby">`
+    // rather than `fixed inset-0` against the whole page.
+    const size = {
+      width: wrapper.clientWidth || window.innerWidth,
+      height: wrapper.clientHeight || window.innerHeight,
+    };
+
+    const camera = new THREE.PerspectiveCamera(50, size.width / size.height, 0.1, 100);
     camera.position.set(0, 0, 8);
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    renderer.setSize(size.width, size.height, false);
 
     const ambient = new THREE.AmbientLight(0x22334a, 0.7);
     const coreLight = new THREE.PointLight(0xffffff, 18, 20, 2);
@@ -262,7 +307,7 @@ export default function Console() {
     const renderScenePass = new RenderPass(scene, camera);
 
     const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      new THREE.Vector2(size.width, size.height),
       0.85, // strength — restrained, not a full-scene glow
       0.6, // radius
       0.15, // threshold
@@ -313,17 +358,26 @@ export default function Console() {
     let rafId = 0;
     const projected = new THREE.Vector3();
 
-    const onResize = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      camera.aspect = w / h;
+    const applySize = (width: number, height: number) => {
+      size.width = width;
+      size.height = height;
+      camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      renderer.setSize(w, h, false);
-      bloomComposer.setSize(w, h);
-      finalComposer.setSize(w, h);
-      bloomPass.resolution.set(w, h);
+      renderer.setSize(width, height, false);
+      bloomComposer.setSize(width, height);
+      finalComposer.setSize(width, height);
+      bloomPass.resolution.set(width, height);
     };
-    window.addEventListener("resize", onResize);
+
+    // Scoped to the wrapper (the Lobby section's own box), not `window` —
+    // there's no viewport-fixed geometry left to keep in sync.
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) applySize(width, height);
+    });
+    resizeObserver.observe(wrapper);
 
     const animate = () => {
       rafId = requestAnimationFrame(animate);
@@ -383,8 +437,8 @@ export default function Console() {
           mesh.getWorldPosition(projected);
           projected.project(camera);
           const behindCamera = projected.z > 1;
-          const x = (projected.x * 0.5 + 0.5) * window.innerWidth;
-          const y = (-projected.y * 0.5 + 0.5) * window.innerHeight;
+          const x = (projected.x * 0.5 + 0.5) * size.width;
+          const y = (-projected.y * 0.5 + 0.5) * size.height;
           button.style.left = `${x}px`;
           button.style.top = `${y}px`;
           button.style.opacity = behindCamera ? "0" : "1";
@@ -422,7 +476,7 @@ export default function Console() {
 
     return () => {
       cancelAnimationFrame(rafId);
-      window.removeEventListener("resize", onResize);
+      resizeObserver.disconnect();
       nodes.forEach(({ mesh }) => {
         mesh.geometry.dispose();
         mesh.material.dispose();
@@ -434,8 +488,12 @@ export default function Console() {
       finalComposer.dispose();
       renderer.dispose();
     };
-    // Intentionally run once: reduced-motion / hover state are read through
-    // refs inside the animation loop so this setup never has to re-run.
+    // Intentionally run once per mount: reduced-motion / hover / current-room
+    // state are read through refs inside the animation loop, and this whole
+    // component only ever mounts while the Lobby is active (or mid-fade-out),
+    // so this setup never has to re-run — it only ever runs once per
+    // mount/unmount cycle, which is exactly the "dispose everything on exit"
+    // behavior we want.
   }, []);
 
   const markVisited = (id: RoomId) => {
@@ -445,17 +503,12 @@ export default function Console() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-40"
-      style={{ contain: "layout" }}
+      className="pointer-events-none absolute inset-0 z-40 transition-opacity ease-out"
+      style={{ contain: "layout", opacity: isLobby ? 1 : 0, transitionDuration: `${FADE_DURATION_MS}ms` }}
     >
       <div
         ref={wrapperRef}
-        className="pointer-events-auto absolute inset-0"
-        style={{
-          transform: getShrinkTransform(shrinkProgress),
-          transformOrigin: "center center",
-          willChange: "transform",
-        }}
+        className={isLobby ? "pointer-events-auto absolute inset-0" : "pointer-events-none absolute inset-0"}
       >
         <canvas
           ref={canvasRef}
@@ -480,9 +533,7 @@ export default function Console() {
                 buttonRefs.current[index] = el;
               }}
               type="button"
-              onClick={() => {
-                window.location.hash = node.href;
-              }}
+              onClick={() => scrollToRoom(node.id)}
               onMouseEnter={() => {
                 setHoveredId(node.id);
                 markVisited(node.id);
