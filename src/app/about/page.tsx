@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import RevealText from "@/components/ambient/RevealText";
 
 // ---------------------------------------------------------------------------
 // PLACEHOLDER CONTENT — flagged per CREATIVE_DIRECTION_V2.md §7.
@@ -27,9 +28,9 @@ export default function AboutPage() {
     <main className="mx-auto max-w-3xl px-3 py-6 md:px-4 md:py-8">
       <header className="mb-6">
         <p className="font-mono text-sm text-accent-primary">02 — About</p>
-        <h1 className="mt-1 font-display text-4xl md:text-5xl">
+        <RevealText as="h1" className="mt-1 font-display text-4xl md:text-5xl">
           Jordan Reyes
-        </h1>
+        </RevealText>
       </header>
 
       <section className="space-y-3 font-sans text-lg leading-relaxed">
@@ -52,9 +53,9 @@ export default function AboutPage() {
       </section>
 
       <section className="mt-6 space-y-3 font-sans text-lg leading-relaxed">
-        <h2 className="mb-1 font-display text-2xl">
+        <RevealText as="h2" className="mb-1 font-display text-2xl">
           How I think about the work
-        </h2>
+        </RevealText>
         <p>
           I don&apos;t start from the architecture. I start from the worst
           moment someone is going to have with the thing I&apos;m building,
@@ -88,7 +89,9 @@ export default function AboutPage() {
       </section>
 
       <section className="mt-6 space-y-3 font-sans text-lg leading-relaxed">
-        <h2 className="mb-1 font-display text-2xl">What I reach for</h2>
+        <RevealText as="h2" className="mb-1 font-display text-2xl">
+          What I reach for
+        </RevealText>
         <p>
           I write most things in{" "}
           <span className="font-mono text-accent-primary">TypeScript</span>{" "}
@@ -126,7 +129,9 @@ export default function AboutPage() {
       </section>
 
       <section className="mt-6 space-y-3 font-sans text-lg leading-relaxed">
-        <h2 className="mb-1 font-display text-2xl">Outside the editor</h2>
+        <RevealText as="h2" className="mb-1 font-display text-2xl">
+          Outside the editor
+        </RevealText>
         <p>
           Most of what makes me better at this job doesn&apos;t look like
           this job. Debugging a flaky test suite and figuring out why a
