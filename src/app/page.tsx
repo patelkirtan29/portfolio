@@ -5,6 +5,7 @@ import Link from "next/link";
 // dynamic() import internally (that flag isn't allowed directly inside
 // this Server Component), so this stays a single plain import here.
 import HeroScene from "@/components/hero/HeroSceneLoader";
+import RevealText from "@/components/ambient/RevealText";
 
 // Home — CREATIVE_DIRECTION_V2.md §4/§6: a status/intro moment, explicitly
 // NOT a full "Now" dashboard (that's deferred). First-person, plainspoken
@@ -24,10 +25,13 @@ export default function Home() {
       <HeroScene />
       <p className="font-mono text-sm text-accent-primary">00 — Home</p>
 
-      <h1 className="font-display text-3xl leading-tight tracking-tight sm:text-4xl md:text-5xl">
+      <RevealText
+        as="h1"
+        className="font-display text-3xl leading-tight tracking-tight sm:text-4xl md:text-5xl"
+      >
         {/* PLACEHOLDER: replace "I'm a developer" with the real name/title. */}
         Hi, I&apos;m a developer — this is my actual working material.
-      </h1>
+      </RevealText>
 
       <div className="max-w-2xl space-y-4 font-sans text-lg text-foreground/80">
         <p>
