@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Command } from "cmdk";
 import { ROOM_IDS, ROOM_LABELS } from "@/lib/scroll";
 import { toggleTheme as sharedToggleTheme } from "@/lib/theme";
+import { closeProjectModal } from "@/lib/projectModal";
 
 // Shared easing curve — same cubic-bezier as Cursor.tsx / SplitText.tsx /
 // DigitFlip.tsx (see Cursor.tsx's EASE constant for the fuller note).
@@ -39,6 +40,13 @@ export default function CommandPalette() {
 
   const jumpTo = useCallback(
     (id: string) => {
+      // If a flagship project modal is open (shallow-routed via
+      // `?project=slug`, see @/lib/projectModal), jumping to a different
+      // room should close it rather than leaving it open over the wrong
+      // room — light-touch ⌘K interop called for in
+      // FINAL_CREATIVE_DIRECTION.md section 4 / BUILD_IDEAS_DECISIONS.md
+      // item 4. No-ops if no modal is open.
+      closeProjectModal();
       window.location.hash = id;
       close();
     },
@@ -72,6 +80,11 @@ export default function CommandPalette() {
     <AnimatePresence>
       {open ? (
         <motion.div
+          // z-[9998]: intentionally above ProjectModal's z-[9990] (and
+          // everything else except Cursor's z-[9999]) so ⌘K always overlays
+          // an open flagship project modal correctly rather than being
+          // covered by it — see ProjectModal.tsx's docblock for the full
+          // stacking-order rationale.
           className="fixed inset-0 z-[9998] flex items-start justify-center pt-[15vh]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
