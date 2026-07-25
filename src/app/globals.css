@@ -1,26 +1,84 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Color tokens — CREATIVE_DIRECTION_V2.md section 3.
+ * Dark is the default mode (html defaults to class="dark" in layout.tsx);
+ * .light overrides re-derive every accent value rather than reusing the
+ * dark-mode hex verbatim, per the spec's explicit a11y/contrast rule.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0d0e10;
+  --surface: #16181b;
+  --foreground: #f2f0ea;
+  --accent-primary: #df6c4f;
+  --accent-secondary: #93a08a;
+}
+
+.light {
+  --background: #f7f3ea;
+  --surface: #efe9dc;
+  --foreground: #201f1c;
+  --accent-primary: #c85a3d;
+  --accent-secondary: #5b6b52;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-secondary: var(--accent-secondary);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Fonts — wired from layout.tsx next/font variables. */
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-space-grotesk);
+  --font-mono: var(--font-jetbrains-mono);
+
+  /*
+   * 8pt base spacing grid: Tailwind v4 derives every numeric spacing
+   * utility (p-1, gap-2, m-4, ...) as a multiple of --spacing. Setting it
+   * to 0.5rem (8px) makes p-1 = 8px, p-2 = 16px, p-3 = 24px, p-4 = 32px,
+   * etc. — the whole spacing scale is the 8pt grid, no separate token
+   * list needed.
+   */
+  --spacing: 0.5rem;
+
+  /*
+   * 1.25 modular type scale off a 16px base.
+   * xs  = 16 / 1.25^2 = 10.24px
+   * sm  = 16 / 1.25   = 12.8px
+   * base= 16px
+   * lg  = 16 * 1.25   = 20px
+   * xl  = 20 * 1.25   = 25px
+   * 2xl = 25 * 1.25   = 31.25px
+   * 3xl = 31.25 * 1.25= 39.06px
+   * 4xl = 39.06 * 1.25= 48.83px
+   * 5xl = 48.83 * 1.25= 61.04px
+   */
+  --text-xs: 0.64rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.5625rem;
+  --text-xl--line-height: 2rem;
+  --text-2xl: 1.953125rem;
+  --text-2xl--line-height: 2.25rem;
+  --text-3xl: 2.44140625rem;
+  --text-3xl--line-height: 2.75rem;
+  --text-4xl: 3.0517578125rem;
+  --text-4xl--line-height: 3.25rem;
+  --text-5xl: 3.814697265625rem;
+  --text-5xl--line-height: 4rem;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), sans-serif;
 }
