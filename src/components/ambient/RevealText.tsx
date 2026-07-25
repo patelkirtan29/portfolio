@@ -10,12 +10,14 @@
 // skips it entirely — so nothing regresses for crawlers, no-JS clients, or
 // motion-sensitive users.
 
-import { useRef, type ElementType, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { useSplitTextReveal } from "@/lib/scroll-reveal";
+
+type HeadingTag = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
 interface RevealTextProps {
   /** Heading tag to render — h1/h2/etc. Defaults to h2. */
-  as?: ElementType;
+  as?: HeadingTag;
   className?: string;
   children: ReactNode;
 }
