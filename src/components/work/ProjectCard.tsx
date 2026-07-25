@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Project } from "./projects";
+import Trinket from "./Trinket";
 
 type ProjectCardProps = {
   project: Project;
@@ -45,6 +46,10 @@ export default function ProjectCard({ project }: ProjectCardProps) {
     <motion.div layout className="rounded-lg border border-foreground/10 bg-surface p-3">
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-display text-lg text-foreground">{project.name}</h3>
+        {/* Decorative-only 3D toy trinket — see Trinket.tsx. Purely additive
+            next to the title; the accessible disclosure button below is the
+            real, unchanged interactive trigger. */}
+        <Trinket project={project} size={56} />
       </div>
 
       <p className="mt-1 font-mono text-sm text-accent-secondary">{subtitle}</p>
