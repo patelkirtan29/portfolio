@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import TiltCard from "@/components/TiltCard";
 
 // TODO(ship-blocker): swap for the real address before ship — placeholder
 // for the same reason layout.tsx's <title>/<description> are placeholders.
@@ -68,106 +69,113 @@ export default function ContactForm() {
       </p>
 
       {/* Always-visible direct contact info — never gated behind the form
-          or any other interaction. */}
-      <section
-        aria-label="Direct contact"
-        className="flex flex-col gap-2 rounded-lg border border-foreground/10 bg-surface p-3"
-      >
-        <a
-          href={`mailto:${EMAIL}`}
-          className={`rounded-sm font-mono text-lg text-accent-primary underline underline-offset-4 ${FOCUS_RING}`}
+          or any other interaction. Wrapped in TiltCard (Phase 1 spectacle
+          item 4) for cursor-reactive depth; the section's own content,
+          focus rings, and a11y attributes are untouched by the wrap. */}
+      <TiltCard>
+        <section
+          aria-label="Direct contact"
+          className="flex flex-col gap-2 rounded-lg border border-foreground/10 bg-surface p-3"
         >
-          {EMAIL}
-        </a>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={copyEmail}
-            aria-label="Copy email address to clipboard"
-            className={`rounded-md border border-foreground/20 px-2 py-1 text-sm text-foreground hover:border-accent-primary ${FOCUS_RING}`}
+          <a
+            href={`mailto:${EMAIL}`}
+            className={`rounded-sm font-mono text-lg text-accent-primary underline underline-offset-4 ${FOCUS_RING}`}
           >
-            Copy email
-          </button>
-          <span role="status" aria-live="polite" className="text-sm text-foreground/60">
-            {copyState === "copied" && "Copied!"}
-            {copyState === "error" && "Couldn't copy — email is above."}
-          </span>
-        </div>
-
-        <div className="mt-2 flex flex-col gap-1">
-          {SOCIAL_LINKS.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              aria-label={link.label}
-              className={`rounded-sm text-sm text-foreground/70 underline underline-offset-4 hover:text-accent-primary ${FOCUS_RING}`}
+            {EMAIL}
+          </a>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={copyEmail}
+              aria-label="Copy email address to clipboard"
+              className={`rounded-md border border-foreground/20 px-2 py-1 text-sm text-foreground hover:border-accent-primary ${FOCUS_RING}`}
             >
-              {link.label}
-            </a>
-          ))}
-        </div>
-      </section>
+              Copy email
+            </button>
+            <span role="status" aria-live="polite" className="text-sm text-foreground/60">
+              {copyState === "copied" && "Copied!"}
+              {copyState === "error" && "Couldn't copy — email is above."}
+            </span>
+          </div>
+
+          <div className="mt-2 flex flex-col gap-1">
+            {SOCIAL_LINKS.map((link) => (
+              <a
+                key={link.label}
+                href={link.href}
+                aria-label={link.label}
+                className={`rounded-sm text-sm text-foreground/70 underline underline-offset-4 hover:text-accent-primary ${FOCUS_RING}`}
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </section>
+      </TiltCard>
 
       {/* Optional extra: a form on top of the always-visible info above,
-          not a replacement for it. See handleSubmit for backend status. */}
-      <form
-        onSubmit={handleSubmit}
-        aria-label="Contact form"
-        className="flex flex-col gap-3 rounded-lg border border-foreground/10 bg-surface p-3"
-      >
-        <div className="flex flex-col gap-1">
-          <label htmlFor="name" className="text-sm text-foreground/80">
-            Name
-          </label>
-          <input
-            id="name"
-            name="name"
-            type="text"
-            required
-            autoComplete="name"
-            className={`rounded-md border border-foreground/20 bg-background px-2 py-1 text-foreground ${FOCUS_RING}`}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="email" className="text-sm text-foreground/80">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            className={`rounded-md border border-foreground/20 bg-background px-2 py-1 text-foreground ${FOCUS_RING}`}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="message" className="text-sm text-foreground/80">
-            Message
-          </label>
-          <textarea
-            id="message"
-            name="message"
-            required
-            rows={5}
-            className={`rounded-md border border-foreground/20 bg-background px-2 py-1 text-foreground ${FOCUS_RING}`}
-          />
-        </div>
-
-        <button
-          type="submit"
-          className={`self-start rounded-md bg-accent-primary px-3 py-1.5 font-display text-background hover:opacity-90 ${FOCUS_RING}`}
+          not a replacement for it. See handleSubmit for backend status.
+          Also wrapped in TiltCard — see note above. */}
+      <TiltCard>
+        <form
+          onSubmit={handleSubmit}
+          aria-label="Contact form"
+          className="flex flex-col gap-3 rounded-lg border border-foreground/10 bg-surface p-3"
         >
-          Send
-        </button>
-        <p className="text-sm text-foreground/60">
-          This opens your email client with the message pre-filled — no
-          backend is wired up yet, so nothing is sent silently or faked as
-          &ldquo;sent&rdquo; here.
-        </p>
-      </form>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="name" className="text-sm text-foreground/80">
+              Name
+            </label>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              required
+              autoComplete="name"
+              className={`rounded-md border border-foreground/20 bg-background px-2 py-1 text-foreground ${FOCUS_RING}`}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="email" className="text-sm text-foreground/80">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              className={`rounded-md border border-foreground/20 bg-background px-2 py-1 text-foreground ${FOCUS_RING}`}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="message" className="text-sm text-foreground/80">
+              Message
+            </label>
+            <textarea
+              id="message"
+              name="message"
+              required
+              rows={5}
+              className={`rounded-md border border-foreground/20 bg-background px-2 py-1 text-foreground ${FOCUS_RING}`}
+            />
+          </div>
+
+          <button
+            type="submit"
+            className={`self-start rounded-md bg-accent-primary px-3 py-1.5 font-display text-background hover:opacity-90 ${FOCUS_RING}`}
+          >
+            Send
+          </button>
+          <p className="text-sm text-foreground/60">
+            This opens your email client with the message pre-filled — no
+            backend is wired up yet, so nothing is sent silently or faked as
+            &ldquo;sent&rdquo; here.
+          </p>
+        </form>
+      </TiltCard>
     </main>
   );
 }
