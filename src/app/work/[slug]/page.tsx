@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import DiffReveal from "@/components/work/DiffReveal";
@@ -12,6 +13,16 @@ type WorkSlugPageProps = {
 // risk of gating content behind the /work grid's client-side disclosure).
 export function generateStaticParams() {
   return projects.map((project) => ({ slug: project.slug }));
+}
+
+export async function generateMetadata({
+  params,
+}: WorkSlugPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const project = projects.find((p) => p.slug === slug);
+  return {
+    title: project ? project.name : "Project not found",
+  };
 }
 
 export default async function WorkSlugPage({ params }: WorkSlugPageProps) {

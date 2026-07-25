@@ -150,6 +150,18 @@ export default function StatusStrip() {
           ))}
         </ul>
 
+        {/*
+          Visible on-page disclaimer — this is the one placeholder in the
+          codebase that otherwise has no on-page note (STATS and the sync
+          heartbeat above are simulated, see the component doc comment).
+          Every other stream's placeholder content is disclosed in visible
+          copy; this matches that convention rather than reading as real
+          telemetry if it ships un-backed.
+        */}
+        <span className="shrink-0 whitespace-nowrap font-mono text-[0.625rem] italic text-foreground/40">
+          illustrative example data
+        </span>
+
         <span
           aria-live="polite"
           aria-atomic="true"

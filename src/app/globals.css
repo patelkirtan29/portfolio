@@ -20,7 +20,14 @@
   --background: #f7f3ea;
   --surface: #efe9dc;
   --foreground: #201f1c;
-  --accent-primary: #c85a3d;
+  /*
+   * Re-derived from #c85a3d (same coral hue/family, ~12deg hue, ~0.43-0.58
+   * saturation) darkened until it clears WCAG AA's 4.5:1 for normal text
+   * against --background (#f7f3ea): computed contrast is 5.00:1 (relative
+   * luminance method), vs. 3.8:1 for the original value. See v2_review.md
+   * §4 / punch-list item 3.
+   */
+  --accent-primary: #af482e;
   --accent-secondary: #5b6b52;
 }
 

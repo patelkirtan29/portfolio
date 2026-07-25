@@ -39,7 +39,7 @@ export default function DiffReveal({ diff }: DiffRevealProps) {
   const lines = view === "before" ? diff.before : diff.after;
 
   const panel = (
-    <div className="rounded bg-background p-3">
+    <div className="overflow-x-auto rounded bg-background p-3">
       {lines.map((line, i) => (
         <DiffLineRow key={i} line={line} />
       ))}

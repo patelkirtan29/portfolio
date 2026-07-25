@@ -26,7 +26,7 @@ export default function AboutPage() {
   return (
     <main className="mx-auto max-w-3xl px-3 py-6 md:px-4 md:py-8">
       <header className="mb-6">
-        <p className="font-mono text-sm text-accent-secondary">About</p>
+        <p className="font-mono text-sm text-accent-primary">02 — About</p>
         <h1 className="mt-1 font-display text-4xl md:text-5xl">
           Jordan Reyes
         </h1>

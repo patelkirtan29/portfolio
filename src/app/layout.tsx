@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import Nav from "@/components/Nav";
+import StatusStrip from "@/components/StatusStrip";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -36,6 +37,16 @@ export default function RootLayout({
       >
         <Nav />
         {children}
+        {/*
+          Mounted globally, alongside Nav, per CREATIVE_DIRECTION_V2.md's
+          "atmosphere layer" framing (§5C) rather than Home-only — both Nav
+          and StatusStrip sit outside individual page content. It's `fixed
+          inset-x-0 bottom-0`, so it never participates in document flow;
+          pages that size themselves to min-h-screen / min-h-[calc(100vh-
+          3.5rem)] (Home, Contact) reserve explicit bottom padding so their
+          content never sits under it — see those files.
+        */}
+        <StatusStrip />
       </body>
     </html>
   );

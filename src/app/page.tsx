@@ -10,7 +10,7 @@ import Link from "next/link";
 // in the real person's name, bio specifics, and stats before ship.
 export default function Home() {
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-5xl flex-col justify-center gap-6 px-4 py-16 sm:px-6">
+    <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-5xl flex-col justify-center gap-6 px-4 pt-16 pb-22 sm:px-6">
       <p className="font-mono text-sm text-accent-primary">00 — Home</p>
 
       <h1 className="font-display text-3xl leading-tight tracking-tight sm:text-4xl md:text-5xl">
@@ -43,8 +43,6 @@ export default function Home() {
           </span>
         </Link>
       </div>
-
-      {/* <StatusStrip /> mounts here once ready — see stream 5 */}
     </main>
   );
 }
