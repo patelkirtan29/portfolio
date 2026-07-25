@@ -170,7 +170,7 @@ export function useLenis(): Lenis | null {
   );
 }
 
-/** Reactive overall page scroll progress, 0..1. Drives things like the Console's radar shrink. */
+/** Reactive overall page scroll progress, 0..1. General-purpose whole-page progress signal for any consumer that needs it. */
 export function useScrollProgress(): number {
   return useSyncExternalStore(
     subscribe,

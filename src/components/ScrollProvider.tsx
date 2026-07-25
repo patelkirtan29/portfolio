@@ -8,7 +8,7 @@
  *   there is exactly one animation clock feeding both Lenis and ScrollTrigger.
  * - Registers `gsap/ScrollTrigger` and keeps it in sync with Lenis's scroll
  *   event, so any ScrollTrigger instance created by other rooms (reveals,
- *   Console shrink, Gallery re-flow) reads from the same clock.
+ *   Gallery re-flow, etc.) reads from the same clock.
  * - Implements room-snap pacing on top of Lenis's velocity/idle behavior
  *   instead of native CSS `scroll-snap-type` (which fights Lenis's input
  *   interception): once scroll velocity settles near zero and the viewport
