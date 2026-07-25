@@ -17,6 +17,13 @@ import { useTheme } from "@/lib/theme";
  * one edit. The theme toggle is likewise single-sourced from `@/lib/theme`'s
  * shared store, so this button and the ⌘K palette's "Toggle theme" action
  * can never drift out of sync.
+ *
+ * Visual note: the Console is Lobby-only (it fully unmounts elsewhere), so
+ * this nav also carries the site's "instrument panel" personality outside
+ * the Lobby via a HUD skin echoing the Console's own vocabulary — mono
+ * uppercase labels, a thin accent underline on the active room link, and a
+ * subtle accent glow on the active mobile dot. Restrained on purpose: no new
+ * color, no new state, just a styling pass on the logic above.
  */
 export default function Nav() {
   const activeId = useCurrentRoom() ?? "lobby";
@@ -41,7 +48,7 @@ export default function Nav() {
               aria-current={activeId === id ? "true" : undefined}
               className={
                 activeId === id
-                  ? "text-accent-primary"
+                  ? "text-accent-primary underline decoration-accent-primary/70 decoration-1 underline-offset-4"
                   : "text-accent-secondary hover:text-foreground"
               }
             >
@@ -76,7 +83,7 @@ export default function Nav() {
             <span
               className={`block rounded-full transition-all ${
                 activeId === id
-                  ? "h-2.5 w-2.5 bg-accent-primary"
+                  ? "h-2.5 w-2.5 bg-accent-primary shadow-[0_0_6px_var(--accent-primary)]"
                   : "h-1.5 w-1.5 bg-accent-secondary/60 group-hover:bg-accent-secondary"
               }`}
             />
