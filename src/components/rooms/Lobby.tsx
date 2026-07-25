@@ -10,6 +10,19 @@
  * Three.js dependency never ships in the initial bundle or blocks first
  * content paint — see Console.tsx's own file header for the rest of the
  * component's design notes and the `@/lib/scroll` integration assumption.
+ *
+ * Note on lifecycle: once mounted here, Console is never unmounted again for
+ * the rest of the page's lifetime (this `<section id="lobby">` itself never
+ * unmounts — `src/app/page.tsx` renders all four rooms simultaneously in one
+ * continuous scroll). Console internally renders its own wrapper as
+ * `position: fixed`, so despite being nested inside this section's DOM, it
+ * visually escapes this section's bounds (and its `overflow-hidden`) to
+ * transition between full-bleed (while this room is in view) and a small
+ * docked corner widget everywhere else — no special container handling is
+ * needed here for that to work. `#lobby`'s id is also load-bearing beyond
+ * this section's own styling: Console.tsx scopes its shrink-progress
+ * ScrollTrigger to `document.getElementById("lobby")`, so this id must keep
+ * matching `ROOM_IDS[0]` from `@/lib/scroll`.
  */
 
 import { Suspense, useSyncExternalStore } from "react";

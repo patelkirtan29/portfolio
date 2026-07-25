@@ -26,9 +26,17 @@ export default function Signal() {
   const messageRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (step === "name") nameRef.current?.focus();
-    if (step === "email") emailRef.current?.focus();
-    if (step === "message") messageRef.current?.focus();
+    // `preventScroll` is required here: this room sits at the bottom of a
+    // single continuous-scroll page driven by Lenis. Without it, focusing an
+    // input that's below the fold (including on initial mount, since `step`
+    // starts as "name") makes the browser natively scroll-into-view the
+    // moment this effect runs — before the user has scrolled anywhere near
+    // Signal — which both fights Lenis and can land ScrollProvider's
+    // room-snap heuristic inside the "near a boundary" zone, triggering a
+    // spurious `scrollToRoom` jump. See BUGFIX notes in ScrollProvider.tsx.
+    if (step === "name") nameRef.current?.focus({ preventScroll: true });
+    if (step === "email") emailRef.current?.focus({ preventScroll: true });
+    if (step === "message") messageRef.current?.focus({ preventScroll: true });
   }, [step]);
 
   function advanceFromName() {
@@ -100,7 +108,15 @@ export default function Signal() {
   return (
     <section
       id="signal"
-      className="min-h-screen flex items-center justify-center px-6 py-24"
+      // Structural guarantee (Option A, "Console shrink repair" doc): reserve
+      // a flat 160px inset (132px widget + 24px margin, rounded up) in this
+      // room's own bottom-right corner so the terminal-style form column can
+      // never lay out into the space the fixed, persistent Console widget
+      // docks in — instead of relying on the widget's transparency/z-index
+      // alone. Gated to `pointer: fine` since the widget never mounts on
+      // coarse-pointer/touch devices (see Lobby.tsx's gate), so mobile isn't
+      // left reserving space for a widget that isn't there.
+      className="min-h-screen flex items-center justify-center px-6 py-24 [@media(pointer:fine)]:pr-[160px] [@media(pointer:fine)]:pb-[160px]"
     >
       <div className="w-full max-w-lg font-mono text-sm text-foreground">
         <p className="mb-6 text-accent-secondary">

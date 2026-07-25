@@ -96,7 +96,17 @@ export default function Practice() {
       id="practice"
       ref={sectionRef}
       aria-label="Room: Practice — about"
-      className="forced-light min-h-screen w-full bg-background px-6 py-24 text-foreground transition-colors md:px-16 lg:px-24"
+      // Structural guarantee (Option A, "Console shrink repair" doc): the
+      // persistent 132x132px Console widget docks fixed bottom-right, 24px
+      // margin, once the visitor scrolls past the Lobby. Rather than trust
+      // the widget's transparency/z-index to never occlude copy (the same
+      // assumption that caused the original oversized-radar bug), reserve a
+      // flat 160px inset (132 + 24, rounded up) on this room's own bottom-
+      // right corner so the paragraph column structurally never lays out
+      // into that region — gated to `pointer: fine` since the widget never
+      // mounts on coarse-pointer/touch devices (see Lobby.tsx's gate), so
+      // mobile keeps its full width instead of losing 160px for nothing.
+      className="forced-light min-h-screen w-full bg-background px-6 py-24 text-foreground transition-colors md:px-16 lg:px-24 [@media(pointer:fine)]:pr-[160px] [@media(pointer:fine)]:pb-[160px]"
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-16">
         <header data-reveal className="opacity-0">

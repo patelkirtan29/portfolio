@@ -10,25 +10,59 @@
  * each mesh every animation frame — the <canvas> itself is purely decorative
  * (`aria-hidden`).
  *
- * LOBBY-ONLY LIFECYCLE: the Console only exists while the Lobby room is
- * active. There is no shrunk/persistent corner-widget state anymore — that
- * mechanic (`useConsoleShrinkProgress` / `getShrinkTransform`, driven by
- * whole-page scroll progress) was the root cause of the Console staying
- * large and opaque over page content in every other room, so it's been
- * removed outright rather than repaired. The outer `Console` component below
- * gates on `useCurrentRoom() === "lobby"` (from `@/lib/scroll`): on exit
- * (scroll-past Lobby, or a node-click jump elsewhere) it keeps the scene
- * mounted just long enough to play a short opacity fade
- * (`FADE_DURATION_MS`), then stops rendering `ConsoleScene` for good, which
- * unmounts it for real — canceling the rAF loop and disposing the
- * renderer/geometries/materials/composers, so nothing keeps costing GPU/
- * battery once you've scrolled away. Every other room's wayfinding is
- * handled independently by `Nav.tsx` (already correct, not touched here).
+ * PERSISTENT SHRINK LIFECYCLE: the Console mounts once (inside Lobby's
+ * dynamic import + Suspense boundary — see Lobby.tsx) and never unmounts or
+ * disposes itself again for the lifetime of the page. Instead of fading out
+ * and tearing down its Three.js resources on room-exit, it transitions from
+ * full-bleed (while the Lobby is in view) into a small persistent radar
+ * widget docked bottom-right (132×132px, 24px margin) for every other room,
+ * then back to full-bleed if the visitor scrolls back up. The rAF loop and
+ * renderer/geometry/material/composer disposal in `ConsoleScene`'s effect
+ * still only run once, on real mount/unmount of this whole module (i.e.
+ * only if Lobby.tsx itself ever stops rendering it, e.g. a pointer-type
+ * change) — there is no more time-boxed fade-then-unmount cycle tied to
+ * `useCurrentRoom()`.
  *
- * The canvas + node buttons are scoped *inside* `<section id="lobby">`
- * (`absolute inset-0` against that section, sized via a `ResizeObserver` on
- * the wrapper) rather than pinned to the viewport — it no longer needs to
- * escape into other rooms' space.
+ * Shrink progress is NOT read from the page-wide `useScrollProgress()` (that
+ * was the original bug — see workspace/portfolio_redesign/
+ * console_fix_A_shrink_repair.md — whole-page progress barely moves while
+ * leaving a short Lobby on a page where Gallery alone is several viewports
+ * tall). Instead, `useShrinkProgress()` below scopes a GSAP `ScrollTrigger`
+ * to `#lobby` itself (`start: "top top"`, `end: "bottom top"`, `scrub:
+ * true`), which reaches progress 1 exactly when the Lobby has scrolled fully
+ * past — i.e. exactly when Practice's top edge reaches the viewport top,
+ * since Practice sits immediately below Lobby in document flow — regardless
+ * of how tall the rest of the page is.
+ *
+ * The shrunk target is a genuine 132×132 square: width and height are
+ * interpolated independently (each targeting 132px on its own axis via
+ * `calc()`), not a single uniform `scale` factor applied to a
+ * viewport-aspect-ratio box — that mismatch was the secondary bug that made
+ * the "shrunk" state 198×132 (or similar) in landscape instead of square.
+ *
+ * The wrapper is `position: fixed` (viewport-relative) rather than scoped
+ * `absolute` inside `<section id="lobby">` — this is what lets it visually
+ * persist and dock in a corner across every room, even though it's still
+ * rendered from inside Lobby.tsx's JSX (no ancestor between this component
+ * and the viewport establishes a transform/filter/perspective/contain
+ * containing block, so `position: fixed` here already escapes Lobby's own
+ * box, `overflow: hidden`, and document flow entirely — no change to
+ * Lobby.tsx's DOM structure or the app root was needed for this to work).
+ *
+ * The renderer is created with `alpha: true` and `scene.background = null`
+ * (previously an opaque navy fill) so only the nodes/light ever render —
+ * the radar can never become a solid block that eclipses page content
+ * underneath it, matching the Option A repair's transparency requirement.
+ *
+ * Reduced-motion visitors get a binary snap instead of a scroll-scrubbed
+ * shrink: full-bleed while Lobby is the current room, fully shrunk
+ * otherwise, with no interpolation riding along live scroll position.
+ * Node orbiting itself is also frozen for reduced motion, same as before.
+ *
+ * Each node's accessible DOM button keeps a comfortable minimum
+ * clickable/tappable hit area (36×36px) regardless of how small the
+ * rendered 3D node graphic gets at the shrunk 132px scale, so the shrink
+ * mechanic doesn't become an accessibility regression.
  *
  * This module is meant to be loaded via `next/dynamic(() => import(...), {
  * ssr: false })` from `rooms/Lobby.tsx`, wrapped in `<Suspense>`, and only on
@@ -40,6 +74,8 @@
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ROOM_IDS, ROOM_LABELS, scrollToRoom, useCurrentRoom, type RoomId } from "@/lib/scroll";
 import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -47,6 +83,10 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 interface ConsoleNodeConfig {
   id: RoomId;
@@ -79,14 +119,19 @@ const CONSOLE_NODES: ConsoleNodeConfig[] = ROOM_IDS.map((id, index) => ({
   phase: (index * Math.PI) / 2,
 }));
 
-const SCENE_BACKGROUND = 0x0d1420;
 const NODE_BASE_COLOR = 0x5c7080;
 const ACCENT_EMISSIVE = 0xff6b42;
 const BLOOM_LAYER = 1;
 const FLOURISH_DURATION_MS = 1600;
-/** Room-exit opacity transition, then full unmount. Kept inside the
- *  150-250ms window called out in the approved fix. */
-const FADE_DURATION_MS = 200;
+
+/** Target shrunk-state square size + corner margin. Must match the layout
+ *  inset reserved in Practice.tsx/Gallery.tsx/Signal.tsx (bottom-right,
+ *  24px margin) so the transparent radar never has to overlap body copy. */
+const RADAR_SIZE_PX = 132;
+const RADAR_MARGIN_PX = 24;
+/** Minimum clickable/tappable hit area per node button, independent of how
+ *  small the rendered 3D node graphic gets at the shrunk scale. */
+const MIN_HIT_AREA_PX = 36;
 
 // ---------------------------------------------------------------------------
 // Hooks
@@ -111,6 +156,42 @@ function getReducedMotionServerSnapshot(): boolean {
  *  client-side. */
 function usePrefersReducedMotion(): boolean {
   return useSyncExternalStore(subscribeReducedMotion, getReducedMotionSnapshot, getReducedMotionServerSnapshot);
+}
+
+/**
+ * Lobby-exit shrink progress: 0 (full-bleed, still inside the Lobby) → 1
+ * (fully shrunk to the docked radar). See this file's header comment for
+ * why this is scoped to a `#lobby` ScrollTrigger instead of the page-wide
+ * `useScrollProgress()`.
+ *
+ * Reduced-motion visitors get a binary snap (0 while Lobby is the current
+ * room, 1 otherwise) instead of the scroll-scrubbed value, so the shrunk
+ * widget's size/position is never tied to live scroll position for
+ * motion-sensitive users — it just snaps straight to its resting state.
+ */
+function useShrinkProgress(reducedMotion: boolean, currentRoom: RoomId | null): number {
+  const [scrubProgress, setScrubProgress] = useState(0);
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    const lobby = document.getElementById("lobby");
+    if (!lobby) return;
+
+    const trigger = ScrollTrigger.create({
+      trigger: lobby,
+      start: "top top",
+      end: "bottom top",
+      scrub: true,
+      onUpdate: (self) => setScrubProgress(self.progress),
+    });
+
+    return () => trigger.kill();
+  }, [reducedMotion]);
+
+  if (reducedMotion) {
+    return currentRoom === "lobby" ? 0 : 1;
+  }
+  return scrubProgress;
 }
 
 /** One soft, one-time oscillator chime. No audio library needed for a
@@ -167,52 +248,10 @@ interface LiveNode {
 }
 
 // ---------------------------------------------------------------------------
-// Outer component — Lobby-scoped mount / fade / unmount gate
+// Console — the persistent scene, DOM buttons, HUD readout
 // ---------------------------------------------------------------------------
 
-/**
- * Renders `ConsoleScene` only while the Lobby room is active. On exit, keeps
- * `ConsoleScene` mounted for `FADE_DURATION_MS` — its wrapper transitions
- * opacity to 0 during that window — and only then stops rendering it, so
- * `ConsoleScene`'s own effect cleanup (rAF cancel + full Three.js dispose)
- * runs at the end of the fade instead of cutting it off mid-transition.
- * Re-entering Lobby (scrolling back up) cancels any pending unmount and
- * remounts immediately.
- */
 export default function Console() {
-  const currentRoom = useCurrentRoom();
-  const isLobby = currentRoom === "lobby";
-  const [sceneMounted, setSceneMounted] = useState(isLobby);
-
-  // Entering (or re-entering) the Lobby mounts immediately. This is a
-  // render-phase state adjustment (not an effect) per React's documented
-  // "adjusting state when a prop changes" pattern: it only ever fires when
-  // `sceneMounted` still disagrees with `isLobby`, so it settles after one
-  // extra render and never loops.
-  if (isLobby && !sceneMounted) {
-    setSceneMounted(true);
-  }
-
-  // Leaving the Lobby: let the opacity transition play out for
-  // FADE_DURATION_MS, then unmount ConsoleScene for real (cancels its rAF
-  // loop and disposes the Three.js renderer/geometries/materials/composers).
-  useEffect(() => {
-    if (isLobby || !sceneMounted) return;
-    const timeoutId = window.setTimeout(() => {
-      setSceneMounted(false);
-    }, FADE_DURATION_MS);
-    return () => window.clearTimeout(timeoutId);
-  }, [isLobby, sceneMounted]);
-
-  if (!sceneMounted) return null;
-  return <ConsoleScene isLobby={isLobby} />;
-}
-
-// ---------------------------------------------------------------------------
-// Inner component — the actual Three.js scene, DOM buttons, HUD readout
-// ---------------------------------------------------------------------------
-
-function ConsoleScene({ isLobby }: { isLobby: boolean }) {
   const reducedMotion = usePrefersReducedMotion();
   const reducedMotionRef = useRef(reducedMotion);
   useEffect(() => {
@@ -236,17 +275,23 @@ function ConsoleScene({ isLobby }: { isLobby: boolean }) {
     currentRoomRef.current = currentRoom;
   }, [currentRoom]);
 
+  const shrinkProgress = useShrinkProgress(reducedMotion, currentRoom);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const wrapper = wrapperRef.current;
     if (!canvas || !wrapper) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(SCENE_BACKGROUND);
+    // Transparent by design: the radar must never be a solid block that can
+    // occlude page content once shrunk into a corner — only the orbiting
+    // nodes/light render, background shows through to whatever's behind it.
+    scene.background = null;
 
-    // Sized off the Lobby-scoped wrapper, not the viewport — the container
-    // this now lives in is `absolute inset-0` against `<section id="lobby">`
-    // rather than `fixed inset-0` against the whole page.
+    // Sized off the wrapper's actual rendered box, which now ranges from
+    // full-viewport (in the Lobby) down to the 132×132 shrunk square — the
+    // ResizeObserver below keeps the renderer/camera in sync as that box's
+    // size is continuously interpolated via CSS during scroll.
     const size = {
       width: wrapper.clientWidth || window.innerWidth,
       height: wrapper.clientHeight || window.innerHeight,
@@ -255,7 +300,7 @@ function ConsoleScene({ isLobby }: { isLobby: boolean }) {
     const camera = new THREE.PerspectiveCamera(50, size.width / size.height, 0.1, 100);
     camera.position.set(0, 0, 8);
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(size.width, size.height, false);
 
@@ -369,8 +414,9 @@ function ConsoleScene({ isLobby }: { isLobby: boolean }) {
       bloomPass.resolution.set(width, height);
     };
 
-    // Scoped to the wrapper (the Lobby section's own box), not `window` —
-    // there's no viewport-fixed geometry left to keep in sync.
+    // Scoped to the wrapper's own box (which now ranges from full-viewport
+    // down to the 132×132 shrunk square via CSS), not `window` — this is
+    // what keeps the renderer/camera in sync through the whole shrink.
     const resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
@@ -489,11 +535,11 @@ function ConsoleScene({ isLobby }: { isLobby: boolean }) {
       renderer.dispose();
     };
     // Intentionally run once per mount: reduced-motion / hover / current-room
-    // state are read through refs inside the animation loop, and this whole
-    // component only ever mounts while the Lobby is active (or mid-fade-out),
-    // so this setup never has to re-run — it only ever runs once per
-    // mount/unmount cycle, which is exactly the "dispose everything on exit"
-    // behavior we want.
+    // state are read through refs inside the animation loop. This component
+    // now mounts once (from Lobby.tsx's dynamic import) and stays mounted —
+    // and therefore this setup only ever runs once — for the whole page
+    // lifetime; the shrink transition is handled entirely by re-rendering
+    // the wrapper's own size/position below, not by tearing this effect down.
   }, []);
 
   const markVisited = (id: RoomId) => {
@@ -503,13 +549,24 @@ function ConsoleScene({ isLobby }: { isLobby: boolean }) {
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-40 transition-opacity ease-out"
-      style={{ contain: "layout", opacity: isLobby ? 1 : 0, transitionDuration: `${FADE_DURATION_MS}ms` }}
+      className="pointer-events-none z-40"
+      style={{
+        position: "fixed",
+        // Anchored from the bottom-right corner: at progress 0 this sits
+        // flush with the viewport edge (full-bleed); at progress 1 it's
+        // exactly RADAR_MARGIN_PX off the corner. Must match the layout
+        // inset reserved in the other rooms (bottom-right, 24px margin).
+        right: `calc(${RADAR_MARGIN_PX}px * ${shrinkProgress})`,
+        bottom: `calc(${RADAR_MARGIN_PX}px * ${shrinkProgress})`,
+        // Width/height interpolated independently, each targeting
+        // RADAR_SIZE_PX on its own axis — this is what keeps the shrunk
+        // state a genuine square instead of stretching in landscape.
+        width: `calc((100vw - ${RADAR_SIZE_PX}px) * ${1 - shrinkProgress} + ${RADAR_SIZE_PX}px)`,
+        height: `calc((100vh - ${RADAR_SIZE_PX}px) * ${1 - shrinkProgress} + ${RADAR_SIZE_PX}px)`,
+        contain: "layout",
+      }}
     >
-      <div
-        ref={wrapperRef}
-        className={isLobby ? "pointer-events-auto absolute inset-0" : "pointer-events-none absolute inset-0"}
-      >
+      <div ref={wrapperRef} className="pointer-events-auto absolute inset-0">
         <canvas
           ref={canvasRef}
           aria-hidden="true"
@@ -544,7 +601,8 @@ function ConsoleScene({ isLobby }: { isLobby: boolean }) {
                 markVisited(node.id);
               }}
               onBlur={() => setHoveredId((current) => (current === node.id ? null : current))}
-              className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-accent-secondary/50 bg-surface/70 px-3 py-1 font-mono text-xs uppercase tracking-wide text-foreground backdrop-blur-sm transition-colors duration-150 hover:border-accent-primary hover:text-accent-primary focus-visible:border-accent-primary focus-visible:text-accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/60"
+              style={{ minWidth: MIN_HIT_AREA_PX, minHeight: MIN_HIT_AREA_PX }}
+              className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent-secondary/50 bg-surface/70 px-3 py-1 font-mono text-xs uppercase tracking-wide text-foreground backdrop-blur-sm transition-colors duration-150 hover:border-accent-primary hover:text-accent-primary focus-visible:border-accent-primary focus-visible:text-accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/60"
             >
               {node.label}
             </button>

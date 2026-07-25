@@ -34,6 +34,15 @@ const SNAP_IDLE_MS = 120;
 const SNAP_VELOCITY_THRESHOLD = 0.05;
 /** Fraction of viewport height around a room's top edge that counts as "near enough" to snap. */
 const SNAP_ZONE_RATIO = 0.12;
+/**
+ * Room-boundary distances are only trusted if the document hasn't reflowed
+ * in the last this-many ms. Guards against async content (e.g. Gallery's
+ * GitHub-backed grid landing) growing the page height right as `trySnap`
+ * evaluates boundary distances — a room edge that *looks* inside the snap
+ * zone at that instant may just be a layout-in-flux artifact, not the user's
+ * genuine resting position.
+ */
+const LAYOUT_SETTLE_MS = 250;
 
 export default function ScrollProvider({
   children,
@@ -42,6 +51,7 @@ export default function ScrollProvider({
 }) {
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSnapping = useRef(false);
+  const lastLayoutChangeAt = useRef(0);
 
   useEffect(() => {
     if (prefersReducedMotion()) {
@@ -66,6 +76,10 @@ export default function ScrollProvider({
     const trySnap = () => {
       if (isSnapping.current) return;
       if (Math.abs(lenis.velocity) > SNAP_VELOCITY_THRESHOLD) return;
+      // Defense-in-depth against async reflows (e.g. Gallery's GitHub data
+      // landing and growing document height): don't trust boundary-distance
+      // math computed while the layout is still settling.
+      if (performance.now() - lastLayoutChangeAt.current < LAYOUT_SETTLE_MS) return;
 
       const viewportHeight = window.innerHeight;
       const zone = viewportHeight * SNAP_ZONE_RATIO;
@@ -93,11 +107,20 @@ export default function ScrollProvider({
     };
     lenis.on("scroll", onScrollForSnap);
 
+    // Track document reflows (e.g. Gallery's async GitHub grid landing) so
+    // `trySnap` can refuse to trust boundary distances computed mid-flux.
+    lastLayoutChangeAt.current = performance.now();
+    const resizeObserver = new ResizeObserver(() => {
+      lastLayoutChangeAt.current = performance.now();
+    });
+    resizeObserver.observe(document.body);
+
     const refreshRaf = requestAnimationFrame(() => ScrollTrigger.refresh());
 
     return () => {
       cancelAnimationFrame(refreshRaf);
       if (idleTimer.current) clearTimeout(idleTimer.current);
+      resizeObserver.disconnect();
       lenis.off("scroll", onScrollTriggerSync);
       lenis.off("scroll", onScrollForSnap);
       gsap.ticker.remove(onTick);
