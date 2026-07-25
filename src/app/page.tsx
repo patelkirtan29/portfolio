@@ -11,6 +11,11 @@ import Link from "next/link";
 export default function Home() {
   return (
     <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-5xl flex-col justify-center gap-6 px-4 pt-16 pb-22 sm:px-6">
+      {/* <HeroScene /> mounts here — see hero stream (Phase 1 scope item 1).
+         Home route only (mounts/unmounts with this page, not persistent
+         across routes — see AmbientLayer in layout.tsx for the sitewide
+         layer). Renders above/behind this existing content per the hero
+         stream's own layout; not wired up yet. */}
       <p className="font-mono text-sm text-accent-primary">00 — Home</p>
 
       <h1 className="font-display text-3xl leading-tight tracking-tight sm:text-4xl md:text-5xl">

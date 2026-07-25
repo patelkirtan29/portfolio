@@ -35,6 +35,10 @@ export default function RootLayout({
       <body
         className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
+        {/* <AmbientLayer /> mounts here — see Phase 1 scope item 3 (sitewide
+           ambient motion layer). Fixed/behind all route content, same
+           "outside individual page content" placement as Nav/StatusStrip
+           below; not wired up yet. */}
         <Nav />
         {children}
         {/*
