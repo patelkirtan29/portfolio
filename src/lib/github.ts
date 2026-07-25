@@ -9,7 +9,7 @@
 //   needed later, just the env var + real username.
 
 /** Placeholder username — swap for the real GitHub handle before ship. */
-export const GITHUB_USERNAME_PLACEHOLDER = "octocat";
+export const GITHUB_USERNAME_PLACEHOLDER = "patelkirtan29";
 
 const GITHUB_API_BASE = "https://api.github.com";
 
