@@ -5,6 +5,7 @@ import { DeskCanvas } from "./DeskCanvas";
 import { ReducedMotionFallback } from "./ReducedMotionFallback";
 import { useCursorParallax } from "./hooks/useCursorParallax";
 import { useScrollExit } from "./hooks/useScrollExit";
+import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 
 // Home hero — warm, low-poly paper-craft desk scene (Phase 1 spec, Canva
 // concept: laptop/plant/mug/lamp/books/sticky-note, unfolds like a
@@ -24,35 +25,26 @@ const SCROLL_FADE_START = 0.6;
 
 export default function HeroScene() {
   const containerRef = useRef<HTMLDivElement>(null);
-  // Lazy initializer reads the preference synchronously on first render
-  // (this component only ever runs client-side — it's dynamically
-  // imported with `ssr: false` — so `window` is always available here).
-  // The effect below only *subscribes* to later changes; it never calls
-  // setState synchronously from the effect body itself.
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean | null>(() =>
-    typeof window === "undefined" ? null : window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-  );
+  // Shared, live-reactive reduced-motion detection (src/lib/
+  // usePrefersReducedMotion.ts). This component only ever runs
+  // client-side (dynamically imported with `ssr: false` — see
+  // HeroSceneLoader.tsx), so there is no hydration boundary to reconcile
+  // here: the hook's client `getSnapshot` is already correct on this
+  // component's very first render, with no intermediate "unknown" state
+  // to gate on (the tri-state `boolean | null` this used to carry was
+  // dead code for exactly that reason — replaced by this shared hook).
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [ready, setReady] = useState(false);
 
   const parallaxTarget = useCursorParallax();
   const scrollProgress = useScrollExit(containerRef);
-
-  // Keep the reduced-motion preference live in case the OS setting
-  // changes mid-session (the initial read happens in the lazy useState
-  // initializer above, not here).
-  useEffect(() => {
-    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const onChange = (event: MediaQueryListEvent) => setPrefersReducedMotion(event.matches);
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
 
   // Defer the actual Canvas mount until the browser is idle (or a short
   // timeout as a fallback) so the ~600KB+ three.js/fiber bundle and its
   // first render never compete with the hero headline/copy for paint
   // time.
   useEffect(() => {
-    if (prefersReducedMotion !== false) return;
+    if (prefersReducedMotion) return;
     const win = window as Window & {
       requestIdleCallback?: (callback: () => void) => number;
       cancelIdleCallback?: (handle: number) => void;
@@ -69,14 +61,14 @@ export default function HeroScene() {
   // same DOM node, deliberately outside React state/render — scrolling
   // must never trigger a React re-render of this subtree.
   useEffect(() => {
-    if (prefersReducedMotion !== false) return;
+    if (prefersReducedMotion) return;
     const el = containerRef.current;
     if (!el) return;
     el.style.opacity = "0";
   }, [prefersReducedMotion]);
 
   useEffect(() => {
-    if (prefersReducedMotion !== false || !ready) return;
+    if (prefersReducedMotion || !ready) return;
     const el = containerRef.current;
     if (!el) return;
     const raf = requestAnimationFrame(() => {
@@ -86,7 +78,7 @@ export default function HeroScene() {
   }, [prefersReducedMotion, ready]);
 
   useEffect(() => {
-    if (prefersReducedMotion !== false || !ready) return;
+    if (prefersReducedMotion || !ready) return;
     let frame = 0;
     const applyScrollFade = () => {
       frame = 0;
@@ -107,12 +99,6 @@ export default function HeroScene() {
     };
   }, [prefersReducedMotion, ready, scrollProgress]);
 
-  // Avoid a hydration flash / layout shift: reserve the same footprint
-  // until we know the user's motion preference.
-  if (prefersReducedMotion === null) {
-    return <div aria-hidden="true" className="h-[42vh] max-h-[420px] min-h-[280px] w-full" />;
-  }
-
   if (prefersReducedMotion) {
     return (
       <div aria-hidden="true" role="presentation" className="w-full">
@@ -126,6 +112,17 @@ export default function HeroScene() {
       ref={containerRef}
       aria-hidden="true"
       role="presentation"
+      // Deliberately not full-viewport, unlike both hero concept docs'
+      // "full-viewport React Three Fiber scene" framing. Home is
+      // documented (CREATIVE_DIRECTION_V2.md §6) as "a status/intro
+      // moment, explicitly NOT a full 'Now' dashboard" — a full-viewport
+      // 3D takeover would blow out that already-agreed-on compact,
+      // centered Home layout (the existing `max-w-5xl` content column in
+      // page.tsx). So the hero is deliberately boxed to a fraction of the
+      // viewport (`42vh`, capped at `420px`) and laid out inline above the
+      // H1, inside that same column, rather than resized to fill the
+      // screen. This is a dimension/layout decision only — no code here
+      // changes as a result of this comment.
       className="h-[42vh] max-h-[420px] min-h-[280px] w-full overflow-hidden rounded-2xl transition-opacity duration-700 ease-out"
     >
       {ready && <DeskCanvas parallaxTarget={parallaxTarget} scrollProgress={scrollProgress} />}

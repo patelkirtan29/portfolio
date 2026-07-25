@@ -26,8 +26,9 @@
 //   entirely" from "focus moved between two children inside it".
 // - `prefers-reduced-motion: reduce` locks to one static, slightly
 //   elevated transform set once — no pointermove tracking, no per-frame
-//   recompute. Detected via useSyncExternalStore (matching StatusStrip's
-//   convention), so it also reacts live if the OS setting changes.
+//   recompute. Detected via the shared `usePrefersReducedMotion` hook
+//   (src/lib/usePrefersReducedMotion.ts), so it also reacts live if the
+//   OS setting changes.
 // - Coarse/touch pointers (no cursor to track) get a static, slightly
 //   elevated resting state instead of faked tilt — real tilt only
 //   engages for fine pointers (mouse/trackpad), and pointer events are
@@ -47,6 +48,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 
 type TiltCardProps = {
   children: ReactNode;
@@ -105,7 +107,6 @@ function buildShadow(t: number) {
   }).join(", ");
 }
 
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const FINE_POINTER_QUERY = "(hover: hover) and (pointer: fine)";
 
 function subscribeToMediaQuery(query: string) {
@@ -145,11 +146,7 @@ const REDUCED_MOTION_STATIC: Tilt = {
 const TOUCH_STATIC: Tilt = { rx: 0, ry: 0, scale: TOUCH_SCALE, t: 0.35 };
 
 export default function TiltCard({ children, className }: TiltCardProps) {
-  const prefersReducedMotion = useSyncExternalStore(
-    subscribeToMediaQuery(REDUCED_MOTION_QUERY),
-    getMediaQuerySnapshot(REDUCED_MOTION_QUERY),
-    getServerSnapshotFalse,
-  );
+  const prefersReducedMotion = usePrefersReducedMotion();
   const hasFinePointer = useSyncExternalStore(
     subscribeToMediaQuery(FINE_POINTER_QUERY),
     getMediaQuerySnapshot(FINE_POINTER_QUERY),

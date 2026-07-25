@@ -1,31 +1,8 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type FocusEvent,
-} from "react";
+import { useEffect, useRef, useState, type FocusEvent } from "react";
 import { motion, useAnimate } from "framer-motion";
-
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-
-function subscribeToReducedMotion(callback: () => void) {
-  const query = window.matchMedia(REDUCED_MOTION_QUERY);
-  query.addEventListener("change", callback);
-  return () => query.removeEventListener("change", callback);
-}
-
-function getReducedMotionSnapshot() {
-  return window.matchMedia(REDUCED_MOTION_QUERY).matches;
-}
-
-// SSR has no window/matchMedia; default to "motion allowed" on the server
-// and let the client snapshot (above) correct it post-hydration.
-function getReducedMotionServerSnapshot() {
-  return false;
-}
+import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 
 /**
  * Mock stat data — this is a from-scratch build with no metrics backend
@@ -129,14 +106,11 @@ function StatItem({ stat }: { stat: (typeof STATS)[number] }) {
  */
 export default function StatusStrip() {
   // Respect (and track live changes to) the OS/browser reduced-motion
-  // preference, per the spec's explicit a11y rule. useSyncExternalStore
-  // (rather than useState + useEffect) keeps this a pure subscription to
-  // an external API with no synchronous setState-in-effect.
-  const prefersReducedMotion = useSyncExternalStore(
-    subscribeToReducedMotion,
-    getReducedMotionSnapshot,
-    getReducedMotionServerSnapshot,
-  );
+  // preference, per the spec's explicit a11y rule. Shared hook (src/lib/
+  // usePrefersReducedMotion.ts) — a useSyncExternalStore subscription to
+  // matchMedia's `change` event, same pattern this file used to
+  // reimplement locally.
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [secondsSinceSync, setSecondsSinceSync] = useState(0);
   const [signal, setSignal] = useState(0);
   const [isMarqueeSuspended, setIsMarqueeSuspended] = useState(false);

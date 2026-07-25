@@ -21,7 +21,12 @@ export default function Home() {
       {/* Hero stream (Phase 1 scope item 1). Home route only
          (mounts/unmounts with this page, not persistent across routes —
          see AmbientLayer in layout.tsx for the sitewide layer). Renders
-         above this existing content per the hero stream's own layout. */}
+         above this existing content per the hero stream's own layout.
+         Deliberately sized to a compact `42vh`/420px-capped box (see the
+         className comment in HeroScene.tsx) rather than full-viewport, to
+         preserve this page's existing compact `max-w-5xl` column per
+         CREATIVE_DIRECTION_V2.md §6 ("status/intro moment, not a full
+         'Now' dashboard"). */}
       <HeroScene />
       <p className="font-mono text-sm text-accent-primary">00 — Home</p>
 

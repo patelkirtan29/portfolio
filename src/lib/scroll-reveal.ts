@@ -19,6 +19,7 @@ import { useEffect, type RefObject } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
+import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
 
 let registered = false;
 
@@ -75,7 +76,15 @@ const REVEAL_EASE = "power3.out";
  * a y + opacity tween as the element scrolls into view.
  *
  * Respects `prefers-reduced-motion`: skips the split/animation entirely and
- * leaves the text at full opacity, in its normal (unsplit) DOM form.
+ * leaves the text at full opacity, in its normal (unsplit) DOM form. Uses
+ * the shared, live-reactive `usePrefersReducedMotion` hook (src/lib/
+ * usePrefersReducedMotion.ts) as an effect dependency, so if the OS
+ * setting changes mid-session — even for a heading whose reveal hasn't
+ * fired yet — the effect tears down and re-runs against the new
+ * preference instead of leaving a stale, one-shot read in place (this used
+ * to be a non-reactive `matchMedia(...).matches` snapshot read once inside
+ * the effect body, unlike every other reduced-motion-gated piece on the
+ * site).
  *
  * Usage:
  * ```tsx
@@ -95,13 +104,11 @@ export function useSplitTextReveal<T extends HTMLElement>(
     duration = DEFAULT_DURATION,
   } = options;
 
+  const prefersReducedMotion = usePrefersReducedMotion();
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
 
     if (prefersReducedMotion) {
       // No split, no animation — just show the real text immediately.
@@ -140,5 +147,5 @@ export function useSplitTextReveal<T extends HTMLElement>(
       ctx.revert();
       split?.revert();
     };
-  }, [ref, stagger, start, yOffset, duration]);
+  }, [ref, stagger, start, yOffset, duration, prefersReducedMotion]);
 }
