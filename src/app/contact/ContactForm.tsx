@@ -104,12 +104,12 @@ export default function ContactForm() {
           EchoLine helpers) with two deliberate deviations — see SignalForm:
           - no Lenis/continuous-scroll `preventScroll` focus-management
             effect (this app has no Lenis, so a plain .focus() is enough).
-          - no fake setTimeout "success" theater — hands off to a real
-            mailto: link on the final Enter, the same backend-less-but-honest
-            approach the old plain form used.
+          - real submission: posts to /api/contact and renders live
+            submitting/success/error states instead of design2's fake
+            setTimeout "success" theater or a mailto: handoff.
           Also wrapped in TiltCard — see note above. */}
       <TiltCard>
-        <SignalForm email={EMAIL} />
+        <SignalForm />
       </TiltCard>
     </main>
   );
@@ -118,14 +118,16 @@ export default function ContactForm() {
 /**
  * Terminal/monospace sequential-disclosure contact form, ported from
  * design2's Signal.tsx room. Fields disclose one at a time on Enter:
- * name -> email -> message -> real mailto: handoff.
+ * name -> email -> message -> real POST to /api/contact.
  */
-function SignalForm({ email }: { email: string }) {
+function SignalForm() {
   const [step, setStep] = useState<Step>("name");
   const [name, setName] = useState("");
   const [emailValue, setEmailValue] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [referenceId, setReferenceId] = useState("");
 
   const nameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -165,29 +167,53 @@ function SignalForm({ email }: { email: string }) {
     setStep("message");
   }
 
-  // No backend exists for this form yet. Rather than fake a success state
-  // (setTimeout + "transmission received" theater, like design2's
-  // Signal.tsx does), this hands off to the user's own mail client via a
-  // mailto: link built from the fields — the same genuinely-working, if
-  // unglamorous, submission path the old plain ContactForm used.
-  // TODO(ship-blocker): before ship, wire this to a real endpoint (e.g. a
-  // serverless function or a form backend like Formspree) and swap this
-  // handler for an actual fetch() + real success/error UI.
-  function submit() {
+  // Posts the collected fields to the real /api/contact endpoint and
+  // reflects the request lifecycle in the UI (submitting/success/error)
+  // instead of design2's fake setTimeout "success" theater or a mailto:
+  // handoff. On failure the form stays on the message step with the
+  // fields intact so the user can retry without retyping anything.
+  async function submit() {
+    if (isSubmitting) return;
     if (!message.trim()) {
       setError("message is required");
       return;
     }
     setError("");
+    setIsSubmitting(true);
 
-    const trimmedName = name.trim();
-    const subject = encodeURIComponent(`Portfolio contact from ${trimmedName}`);
-    const body = encodeURIComponent(
-      `${message}\n\n— ${trimmedName} (${emailValue.trim()})`,
-    );
-    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+    const formPayload = {
+      name: name.trim(),
+      email: emailValue.trim(),
+      message,
+    };
 
-    setStep("done");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formPayload),
+      });
+
+      let data: { referenceId?: string; error?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        // Response had no/invalid JSON body — fall through to the
+        // generic error message below.
+      }
+
+      if (!res.ok) {
+        setError(data.error || "Something went wrong — please try again.");
+        return;
+      }
+
+      setReferenceId(data.referenceId ?? "");
+      setStep("done");
+    } catch {
+      setError("Couldn't reach the server — check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleNameKey(e: KeyboardEvent<HTMLInputElement>) {
@@ -216,6 +242,7 @@ function SignalForm({ email }: { email: string }) {
     setEmailValue("");
     setMessage("");
     setError("");
+    setReferenceId("");
     setStep("name");
   }
 
@@ -279,12 +306,30 @@ function SignalForm({ email }: { email: string }) {
               spellCheck={false}
               aria-label="Your message"
               rows={3}
-              className="flex-1 bg-transparent outline-none resize-none placeholder:text-accent-secondary/40"
+              disabled={isSubmitting}
+              className="flex-1 bg-transparent outline-none resize-none placeholder:text-accent-secondary/40 disabled:opacity-50"
               placeholder="say something — enter to send, shift+enter for new line"
             />
           </PromptLine>
         )}
       </div>
+
+      {step === "message" && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={submit}
+            disabled={isSubmitting}
+            aria-label="Send message"
+            className={`rounded-md border border-foreground/20 px-2 py-1 text-sm text-foreground hover:border-accent-primary disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING}`}
+          >
+            {isSubmitting ? "sending…" : "send"}
+          </button>
+          <span role="status" aria-live="polite" className="text-sm text-foreground/60">
+            {isSubmitting && "sending — hang tight"}
+          </span>
+        </div>
+      )}
 
       {error && (
         <p role="alert" className="text-accent-primary">
@@ -296,9 +341,9 @@ function SignalForm({ email }: { email: string }) {
         {step === "done" && (
           <div className="border-t border-muted pt-4">
             <p className="text-accent-primary">
-              {`message queued${
-                name.trim() ? `, ${name.trim().split(" ")[0]}` : ""
-              } — your email client should be opening now to send it.`}
+              {`message sent${
+                name.trim() ? `, thanks ${name.trim().split(" ")[0]}` : ""
+              } — reference ${referenceId || "pending"}.`}
             </p>
             <button
               type="button"
@@ -312,9 +357,8 @@ function SignalForm({ email }: { email: string }) {
       </div>
 
       <p className="text-sm text-foreground/60">
-        This opens your email client with the message pre-filled — no
-        backend is wired up yet, so nothing is sent silently or faked as
-        &ldquo;sent&rdquo; here.
+        Sent directly from this form — no email client required, and
+        nothing is faked as &ldquo;sent&rdquo; here.
       </p>
     </form>
   );
