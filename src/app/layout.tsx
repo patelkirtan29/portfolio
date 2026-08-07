@@ -3,6 +3,7 @@ import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import Nav from "@/components/Nav";
 import StatusStrip from "@/components/StatusStrip";
 import AmbientLayer from "@/components/AmbientLayer";
+import Cursor from "@/components/Cursor";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body
         className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
+        <Cursor />
         <AmbientLayer />
         <Nav />
         {children}
