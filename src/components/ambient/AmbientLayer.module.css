@@ -1,0 +1,119 @@
+/*
+ * Sitewide ambient motion layer — a quiet, slow-drifting gradient glow plus
+ * a faint static grain texture, fixed behind every route's content.
+ * (spectacle_ideas_google.md item #2 — "Persistent ambient shader layer",
+ * bfcm.shopify.com-style subtle animated background mood.)
+ *
+ * Deliberately restrained: low opacity, long animation durations (48s/64s),
+ * blurred so there are no hard edges to draw the eye — mood, not a feature.
+ */
+
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.blobPrimary,
+.blobSecondary {
+  position: absolute;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 9999px;
+  filter: blur(120px);
+  opacity: 0.16;
+  will-change: transform;
+}
+
+.blobPrimary {
+  top: -18vmax;
+  left: -14vmax;
+  background: radial-gradient(
+    circle,
+    var(--accent-primary) 0%,
+    transparent 70%
+  );
+}
+
+.blobSecondary {
+  right: -14vmax;
+  bottom: -18vmax;
+  background: radial-gradient(
+    circle,
+    var(--accent-secondary) 0%,
+    transparent 70%
+  );
+}
+
+/* Faint, static grain — texture rather than motion, so it costs nothing
+   per-frame and doesn't need a reduced-motion/save-data gate of its own. */
+.grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-repeat: repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Animated state: slow, continuous drift. */
+.animated .blobPrimary {
+  animation: drift-primary 48s ease-in-out infinite alternate;
+}
+
+.animated .blobSecondary {
+  animation: drift-secondary 64s ease-in-out infinite alternate;
+}
+
+/* Static fallback (reduced motion / save-data): one settled frame of the
+   same visual, no per-frame recompute. */
+.static .blobPrimary {
+  transform: translate3d(4vmax, 3vmax, 0);
+}
+
+.static .blobSecondary {
+  transform: translate3d(-3vmax, -4vmax, 0);
+}
+
+@keyframes drift-primary {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(8vmax, 6vmax, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(3vmax, -4vmax, 0) scale(1);
+  }
+}
+
+@keyframes drift-secondary {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-6vmax, -8vmax, 0) scale(1.05);
+  }
+  100% {
+    transform: translate3d(-3vmax, 4vmax, 0) scale(1);
+  }
+}
+
+/* Defense in depth: even if JS hasn't evaluated yet (or fails to load),
+   an OS-level reduced-motion preference is honored at the CSS layer too. */
+@media (prefers-reduced-motion: reduce) {
+  .animated .blobPrimary,
+  .animated .blobSecondary {
+    animation: none;
+  }
+
+  .animated .blobPrimary {
+    transform: translate3d(4vmax, 3vmax, 0);
+  }
+
+  .animated .blobSecondary {
+    transform: translate3d(-3vmax, -4vmax, 0);
+  }
+}
