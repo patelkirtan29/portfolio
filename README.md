@@ -91,7 +91,7 @@ Source distinctions are intentional: ImmunoNet’s 0.896 macro-F1 is held-out so
 
 The header now uses archival location/education metadata and a zero-button acoustic hairline. Say “Hey” after opting into the wake listener, press `/`, type a letter, or interact with the hairline to summon the Council. The hero appears immediately; the 1.2-second Résumé Implosion runs inside the Council only.
 
-Six project exhibitions have dedicated SVG/GSAP system studies: ImmunoNet alignment, RAG socket recovery and separate AWS design, SibylKV union gather, FAERS funnel/PCA/network, GoLlama worker authentication, and Job Intelligence email/calendar/preparation flow. All are illustrative, with reduced-motion states. Editing a project’s evidence replaces its original dedicated diagram with the current stack inventory.
+Project exhibitions include dedicated system studies (Projects 01–04 now use playable Three.js chambers; 05–06 retain SVG/GSAP): ImmunoNet alignment, RAG socket recovery and separate AWS design, SibylKV union gather, FAERS funnel/PCA/network, GoLlama worker authentication, and Job Intelligence email/calendar/preparation flow. All are illustrative, with reduced-motion states. Editing a project’s evidence replaces its original dedicated diagram with the current stack inventory.
 
 Career chapters, project-proven skills, familiar tools, and research interests are distinct. The identity editor persists these fields. Raven summaries include questions, answers, unlocked lessons and source links.
 
@@ -110,3 +110,13 @@ Open Project 01 to enter the lazy-loaded chamber. `src/three/ThreeHost.tsx` owns
 The bottom dock controls raw/standardized targets, the keyboard/pointer GeneAttention slicer and a narrated walkthrough. The inspector supports direct selection, arrow buttons and cell numbers. Reduced motion settles positions and disables the continuous loop and automatic tour progression.
 
 All 10,000 cell coordinates and four marker-weight bars are illustrative. Paper metrics and dataset accessions are separate pinned evidence. The +0.018 comparison refers to the preprocessing bundle, not an isolated causal effect of the animation. `FIGURE_SLOTS` in `immunoModel.ts` accepts original UMAP/attention image paths with source captions; these slots intentionally remain unpopulated until original exports are provided.
+
+## Physics chambers: RAG, SibylKV and FAERS
+
+Open Projects 02, 03 or 04 from the exhibition to enter their playable studies. They share the same lazy Three.js host as ImmunoNet; Rapier WASM is downloaded only when a physics chamber is opened. The host supports asynchronous scene setup, pointer capture for dragging, a 33ms maximum simulation step, visibility pausing, reduced-motion redraws and late-initialization cleanup. Closing an exhibition releases the scene, physics world, buffers and WebGL context.
+
+- **RAG:** sever or pull a socket cable, observe the same in-flight query continue, and reconnect through Registry. The idle scrubber reaps disconnected idle sessions at ten minutes. Similarity scores and query progress are illustrative. The AWS wireframe is a separate design-phase blueprint, not a shipped backend.
+- **SibylKV:** compare physical per-request queue contention with proposed union gathering; explore the four stages, prefix overlap, prefix size and device count. GSAP Flip animates the DOM block inventory alongside Three.js Bezier paths. The stage-three Bessel shader illustrates exact LSE merging. All behavior is qualitative: no measured throughput, latency or accuracy results are supplied.
+- **FAERS:** scrub the XML-to-record pipeline, drag constellation nodes and inspect linked prototype signals. The funnel uses GPU ping-pong buffers where supported and a CPU fallback otherwise. The reported ~9% figure concerns age outliers retained in analysis, not a measured fraction of this synthetic graph. Its composite signals are PRR-inspired, not validated FDA PRR or clinical findings. The original live dashboard is offline.
+
+Each chamber includes a keyboard-accessible dock, guided text with optional browser narration, provenance and light/dark styling. These are client-side explanations of the supplied project material; they do not start Elixir services, query pgvector, execute GPU inference or process real FAERS records.
